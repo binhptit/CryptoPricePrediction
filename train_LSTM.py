@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.autograd import Variable
+from tqdm import tqdm
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
@@ -23,6 +23,7 @@ dtype = torch.FloatTensor
 embedding_dim = 6
 n_hidden = 128 # number of hidden units in one cell
 num_classes = 4  # 0 or 1
+epochs = 200
 
 # 3 words sentences (=sequence_length is 3)
 # sentences = ["i love you", "he loves me", "she likes baseball", "i hate you", "sorry for that", "this is awful"]
@@ -54,20 +55,19 @@ val_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_cryp
 test_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='test'), batch_size=4,
                                           shuffle=False)
 
-model = BiLSTM_Attention(embedding_dim, n_hidden, num_classes)
+model = BiLSTM_Attention(embedding_dim, n_hidden, num_classes).cuda()
 
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-import pdb; pdb.set_trace()
 # Training
 
 loss_eval = 100000
-for epoch in range(200):
+for epoch in tqdm(range(epochs)):
     optimizer.zero_grad()
 
     losses = []
-    for batch in train_loader:
+    for idx, batch in tqdm(enumerate(train_loader)):
         input_batch = batch[0]
         target_batch = batch[1]
 
