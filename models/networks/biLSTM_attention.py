@@ -10,11 +10,12 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 class BiLSTM_Attention(nn.Module):
-    def __init__(self, embedding_dim, n_hidden, num_classes):
+    def __init__(self, embedding_dim, n_hidden, num_classes, device):
         super(BiLSTM_Attention, self).__init__()
         self.embedding_dim = embedding_dim
         self.n_hidden = n_hidden
         self.num_classes = num_classes
+        self.device = device
 
         self.lstm = nn.LSTM(embedding_dim, n_hidden, bidirectional=True)
         self.out = nn.Linear(n_hidden * 2, num_classes)
@@ -26,15 +27,15 @@ class BiLSTM_Attention(nn.Module):
         soft_attn_weights = F.softmax(attn_weights, 1)
         # [batch_size, n_hidden * num_directions(=2), n_step] * [batch_size, n_step, 1] = [batch_size, n_hidden * num_directions(=2), 1]
         context = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
-        return context, soft_attn_weights.data.numpy() # context : [batch_size, n_hidden * num_directions(=2)]
+        return context, soft_attn_weights.data # context : [batch_size, n_hidden * num_directions(=2)]
 
     def forward(self, X):
         # input = self.embedding(X) # input : [batch_size, len_seq, embedding_dim]
         input = X
         input = input.permute(1, 0, 2) # input : [len_seq, batch_size, embedding_dim]
 
-        hidden_state = Variable(torch.zeros(1*2, len(X), self.n_hidden)) # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
-        cell_state = Variable(torch.zeros(1*2, len(X), self.n_hidden)) # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
+        hidden_state = Variable(torch.zeros(1*2, len(X), self.n_hidden)).to(self.device) # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
+        cell_state = Variable(torch.zeros(1*2, len(X), self.n_hidden)).to(self.device) # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
 
         # final_hidden_state, final_cell_state : [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
         output, (final_hidden_state, final_cell_state) = self.lstm(input, (hidden_state, cell_state))

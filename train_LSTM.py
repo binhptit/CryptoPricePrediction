@@ -3,8 +3,8 @@
   Reference : https://github.com/prakashpandey9/Text-Classification-Pytorch/blob/master/models/LSTM_Attn.py
 '''
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 import numpy as np
 import torch
@@ -17,104 +17,150 @@ import matplotlib.pyplot as plt
 from models.networks.biLSTM_attention import BiLSTM_Attention
 from datahub.dataset.crypto_dataloader import CryptoCurrencyPriceDataset
 from datahub.data_generator.crypto_currency_crawler import BinanceCryptoDataCrawler
-dtype = torch.FloatTensor
 
-# Bi-LSTM(Attention) Parameters
-embedding_dim = 6
-n_hidden = 128 # number of hidden units in one cell
-num_classes = 4  # 0 or 1
-epochs = 200
+import argparse
 
-# 3 words sentences (=sequence_length is 3)
-# sentences = ["i love you", "he loves me", "she likes baseball", "i hate you", "sorry for that", "this is awful"]
-# labels = [1, 1, 1, 0, 0, 0]  # 1 is good, 0 is not good.
+def parameter_parser():
+	parser = argparse.ArgumentParser(description = "Crypto Price Prediction")
 
-# word_list = " ".join(sentences).split()
-# word_list = list(set(word_list))
-# word_dict = {w: i for i, w in enumerate(word_list)}
-# vocab_size = len(word_dict)
+	parser.add_argument("--epochs",
+							dest = "epochs",
+							type = int,
+							default = 300,
+						help = "Number of gradient descent iterations. Default is 200.")
 
-# inputs = []
-# for sen in sentences:
-#     inputs.append(np.asarray([word_dict[n] for n in sen.split()]))
+	parser.add_argument("--learning_rate",
+							dest = "learning_rate",
+							type = float,
+							default = 0.001,
+						help = "Gradient descent learning rate. Default is 0.01.")
 
-# targets = []
-# for out in labels:
-#     targets.append(out) # To using Torch Softmax Loss function
+	parser.add_argument("--hidden_dim",
+							dest = "hidden_dim",
+							type = int,
+							default = 128,
+						help = "Number of neurons by hidden layer. Default is 128.")
+	
+	parser.add_argument("--window_len",
+							dest = "window_len",
+							type = int,
+							default = 128,
+						help = "Length of input")
+						
+	parser.add_argument("--lstm_layers",
+							dest = "lstm_layers",
+							type = int,
+							default = 1,
+					help = "Number of LSTM layers")
+					
+	parser.add_argument("--batch_size",
+								dest = "batch_size",
+								type = int,
+								default = 64,
+							help = "Batch size")
 
-# input_batch = Variable(torch.LongTensor(inputs))
-# target_batch = Variable(torch.LongTensor(targets))
+	parser.add_argument("--num_class",
+							dest = "num_class",
+							type = int,
+							default = 4,
+						help = "Number of class. Defaut 4: high, open, close, low")	
+                        			 
+	return parser.parse_args()
 
-binance_crypto_data_crawler = BinanceCryptoDataCrawler()
-binance_crypto_data_crawler.load_from_file(r'dataset/binance_crypto_price_data.json')
+def weights_init_uniform(m):
+	classname = m.__class__.__name__
+	# for every Linear layer in a model..
+	if classname.find('Linear') != -1:
+		# apply a uniform distribution to the weights and a bias=0
+		m.weight.data.uniform_(0.0, 1.0)
+		m.bias.data.fill_(0)
 
-train_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='train'), batch_size=4,
-                                          shuffle=False)
-val_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='val'), batch_size=4,
-                                          shuffle=False)
-test_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='test'), batch_size=4,
-                                          shuffle=False)
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-model = BiLSTM_Attention(embedding_dim, n_hidden, num_classes).cuda()
+if __name__ == "__main__":
+	args = parameter_parser()
 
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+	# Bi-LSTM(Attention) Parameters
+	embedding_dim = 6
 
-# Training
+	binance_crypto_data_crawler = BinanceCryptoDataCrawler()
+	binance_crypto_data_crawler.load_from_file(r'dataset/btc_binance_crypto_price_data.json')
 
-loss_eval = 100000
-for epoch in tqdm(range(epochs)):
-    optimizer.zero_grad()
+	if torch.cuda.is_available():
+		device = torch.device('cuda')
+	else:
+		device = torch.device('cpu')
 
-    losses = []
-    for idx, batch in tqdm(enumerate(train_loader)):
-        input_batch = batch[0]
-        target_batch = batch[1]
+	train_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='train', window_len=args.window_len), batch_size=args.batch_size,
+											shuffle=False)
+	val_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='val', window_len=args.window_len), batch_size=args.batch_size,
+											shuffle=False)
+	test_loader = torch.utils.data.DataLoader(CryptoCurrencyPriceDataset(binance_crypto_data_crawler, mode='test', window_len=args.window_len), batch_size=args.batch_size,
+											shuffle=False)
 
-        output, attention = model(input_batch)
-        loss = criterion(output, target_batch)
-        
-        losses.append(loss)
-        # if (epoch + 1) % 100 == 0:
-        loss.backward()
-        optimizer.step()
-    
-    if epoch % 5 == 0:
-        model.eval()
+	model = BiLSTM_Attention(embedding_dim, args.hidden_dim, args.num_class, device).to(device)
+	model.apply(weights_init_uniform)
 
-        val_losses = []
-        for batch in val_loader:
-            input_batch = batch[0]
-            target_batch = batch[1]
+	log_file = open(f'weights/BiLSTM_Best_wl{args.window_len}_hds{args.hidden_dim}_bs{args.batch_size}_lr{args.learning_rate}.log', 'w')
 
-            output, attention = model(input_batch)
-            loss = criterion(output, target_batch)
+	print(f"Parameters: {count_parameters(model)}")
+	log_file.write(f"Parameters: {count_parameters(model)}\n")
 
-            val_losses += loss
-        
-        if sum(val_losses) / len(val_losses) < loss_eval:
-            loss_eval = sum(val_losses) / len(val_losses) 
-            torch.save(model.state_dict(), 'weights/BiLSTM_Best.pth')
+	criterion = nn.MSELoss()
+	optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(sum(losses) / len(losses)))
+	# Training
 
+	loss_eval = 100000
+	best_acc = -1
 
-# # Test
-# test_text = 'sorry hate you'
-# tests = [np.asarray([word_dict[n] for n in test_text.split()])]
-# test_batch = Variable(torch.LongTensor(tests))
+	for epoch in tqdm(range(args.epochs)):
+		model.train()
+		optimizer.zero_grad()
+		losses = []
+		for idx, batch in tqdm(enumerate(train_loader)):
+			input_batch = batch[0].to(device)
+			target_batch = batch[1].to(device)
 
-# # Predict
-# predict, _ = model(test_batch)
-# predict = predict.data.max(1, keepdim=True)[1]
-# if predict[0][0] == 0:
-#     print(test_text,"is Bad Mean...")
-# else:
-#     print(test_text,"is Good Mean!!")
-    
-# fig = plt.figure(figsize=(6, 3)) # [batch_size, n_step]
-# ax = fig.add_subplot(1, 1, 1)
-# ax.matshow(attention, cmap='viridis')
-# ax.set_xticklabels(['']+['first_word', 'second_word', 'third_word'], fontdict={'fontsize': 14}, rotation=90)
-# ax.set_yticklabels(['']+['batch_1', 'batch_2', 'batch_3', 'batch_4', 'batch_5', 'batch_6'], fontdict={'fontsize': 14})
-# plt.show()
+			output, attention = model(input_batch)
+			loss = criterion(output, target_batch)
+			
+			losses.append(loss)
+
+			loss.backward()
+			optimizer.step()
+		print('Epoch:', '%04d' % (epoch + 1), '. Train loss =', '{:.6f}'.format(sum(losses) / len(losses)))
+		log_file.write('Epoch: ' + '%04d' % (epoch + 1) + '. Train loss =' + '{:.6f}'.format(sum(losses) / len(losses)) + "\n")
+
+		if epoch % 1 == 0:
+			model.eval()
+
+			val_losses = []
+			with torch.no_grad():
+				pred = np.array([])
+				gt = np.array([])
+
+				for batch in val_loader:
+					input_batch = batch[0].to(device)
+					target_batch = batch[1].to(device)
+
+					output, attention = model(input_batch)
+					loss = criterion(output, target_batch)
+
+					pred = np.append(pred, np.array([int(o[3]>=o[0]) for o in output.cpu().numpy()]))
+					gt = np.append(gt, np.array([int(o[3]>=o[0]) for o in target_batch.cpu().numpy()]))
+
+					val_losses.append(loss)
+				
+				accuracy = (len(pred) - sum(np.add(pred, gt) % 2)) / len(pred)
+				print('\tVal loss =', '{:.6f}'.format(sum(losses) / len(losses)))
+				log_file.write('\tVal loss =' + '{:.6f}'.format(sum(losses) / len(losses)) + f". Accuracy: {accuracy}." + "\n")
+
+				if sum(val_losses) / len(val_losses) < loss_eval and accuracy >= best_acc:
+					print("\t\tFound best checkpoint -> Saving..")
+					log_file.write("\tFound best checkpoint -> Saving..\n")
+					loss_eval = sum(val_losses) / len(val_losses)
+					torch.save(model.state_dict(), f'weights/BiLSTM_Best_wl{args.window_len}_hds{args.hidden_dim}_bs{args.batch_size}_lr{args.learning_rate}.pth')
+				
+				

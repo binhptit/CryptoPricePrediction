@@ -1,6 +1,5 @@
 import os
 import statistics
-from attr import attributes
 import requests
 
 from binance.client import Client
@@ -10,9 +9,8 @@ from datahub.data_generator.base_generator import BaseGenerator
 class BinanceCryptoDataCrawler(BaseGenerator):
     def __init__(self, api_key: str = None, api_secret: str = None) -> None:
         super().__init__(api_key, api_secret)
-        
         self.client = Client(self.api_key, self.api_secret)
-        self.account_info = self.client.get_account()
+        # self.account_info = self.client.get_account()
         
         self.symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'SOLUSDT', 'DOTUSDT', 'DAIUSDT',
         'BCHUSDT', 'LTCUSDT', 'NEARUSDT', 'AVAXUSDT', 'CELOUSDT', 'TRXUSDT', 'XLMUSDT', 'FTTUSDT', 'TRXUSDT', 
@@ -99,7 +97,6 @@ class BinanceCryptoDataCrawler(BaseGenerator):
                     'min_number_of_trades': min_number_of_trades
                 }
             print(f"\tDone {symbol}. -//")
-            break
 
         dump_json(save_path, self.crypto_data)
 

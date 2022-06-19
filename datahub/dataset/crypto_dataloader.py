@@ -2,7 +2,6 @@ import sys
 sys.path.append('D:\Coding\CryptoWorkPlace')
 
 import os
-from sympy import sequence
 import torch
 import pandas as pd
 import numpy as np
@@ -103,14 +102,14 @@ class CryptoCurrencyPriceDataset(Dataset):
                 min_number_of_trades = attr['min_number_of_trades']
 
                 for candle_info in full_data:
-                    open = candle_info['open']
+                    open_price = candle_info['open']
                     high = candle_info['high']
                     low = candle_info['low']
                     close =candle_info['close']
                     volume = candle_info['volume']
 
                     preprocess_timeframe_data.append([
-                        self.normalize_min_max(open, min_price, max_price),
+                        self.normalize_min_max(open_price, min_price, max_price),
                         self.normalize_min_max(high, min_price, max_price),
                         self.normalize_min_max(low, min_price, max_price),
                         self.normalize_min_max(close, min_price, max_price),

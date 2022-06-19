@@ -11,6 +11,12 @@
     * 3.2 Price action candle setup Prediction
 3. Evaluation
 
+## Reference
+* https://github.com/Soroush98/LSTM-CNN_Stock
+* https://github.com/olof98johansson/StockPrediction
+* https://github.com/oliverguhr/transformer-time-series-prediction
+* https://github.com/philipxjm/Deep-Convolution-Stock-Technical-Analysis
+* https://github.com/manthanthakker/BitcoinPrediction
 
 
 
