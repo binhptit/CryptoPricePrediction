@@ -1,4 +1,8 @@
 
+## To do
+- Detect shooting star + hammer + mazubuzu
+- Statistic nummber times continue or reversal each candle
+
 ## Plan:
 1. Crawl crypto currency prices including history and real-time data.
 2. Preprocessing, data annotation

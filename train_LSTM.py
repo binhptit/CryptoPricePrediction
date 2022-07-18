@@ -44,7 +44,7 @@ def parameter_parser():
 	parser.add_argument("--window_len",
 							dest = "window_len",
 							type = int,
-							default = 128,
+							default = 10,
 						help = "Length of input")
 						
 	parser.add_argument("--lstm_layers",
@@ -62,8 +62,15 @@ def parameter_parser():
 	parser.add_argument("--num_class",
 							dest = "num_class",
 							type = int,
-							default = 4,
+							default = 1,
 						help = "Number of class. Defaut 4: high, open, close, low")	
+	
+	parser.add_argument("--embedding_dim",
+							dest = "embedding_dim",
+							type = int,
+							default = 6,
+						help = "Embedding dimension")
+
                         			 
 	return parser.parse_args()
 
@@ -123,6 +130,7 @@ if __name__ == "__main__":
 			input_batch = batch[0].to(device)
 			target_batch = batch[1].to(device)
 
+			print(input_batch.shape)
 			output, attention = model(input_batch)
 			loss = criterion(output, target_batch)
 			
@@ -148,16 +156,17 @@ if __name__ == "__main__":
 					output, attention = model(input_batch)
 					loss = criterion(output, target_batch)
 
-					pred = np.append(pred, np.array([int(o[3]>=o[0]) for o in output.cpu().numpy()]))
-					gt = np.append(gt, np.array([int(o[3]>=o[0]) for o in target_batch.cpu().numpy()]))
+					# pred = np.append(pred, np.array([int(o[3]>=o[0]) for o in output.cpu().numpy()]))
+					# gt = np.append(gt, np.array([int(o[3]>=o[0]) for o in target_batch.cpu().numpy()]))
 
 					val_losses.append(loss)
 				
-				accuracy = (len(pred) - sum(np.add(pred, gt) % 2)) / len(pred)
-				print('\tVal loss =', '{:.6f}'.format(sum(losses) / len(losses)))
-				log_file.write('\tVal loss =' + '{:.6f}'.format(sum(losses) / len(losses)) + f". Accuracy: {accuracy}." + "\n")
+				# accuracy = (len(pred) - sum(np.add(pred, gt) % 2)) / len(pred)
+				accuracy = 0.0
+				print('\tVal loss =', '{:.6f}'.format(sum(val_losses) / len(val_losses))+ f". Accuracy: {accuracy}." + "\n")
+				log_file.write('\tVal loss =' + '{:.6f}'.format(sum(val_losses) / len(val_losses)) + f". Accuracy: {accuracy}." + "\n")
 
-				if sum(val_losses) / len(val_losses) < loss_eval and accuracy >= best_acc:
+				if sum(val_losses) / len(val_losses) < loss_eval:
 					print("\t\tFound best checkpoint -> Saving..")
 					log_file.write("\tFound best checkpoint -> Saving..\n")
 					loss_eval = sum(val_losses) / len(val_losses)

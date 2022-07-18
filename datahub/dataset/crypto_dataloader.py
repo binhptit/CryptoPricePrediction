@@ -61,7 +61,7 @@ class CryptoCurrencyPriceDataset(Dataset):
         for i in range(len(sequence)-look_back-1):
             a = sequence[i:(i+look_back)]
             dataX.append(a)
-            dataY.append(sequence[i + look_back][0:4])
+            dataY.append(sequence[i + look_back][3])
 
         return dataX, dataY
     
