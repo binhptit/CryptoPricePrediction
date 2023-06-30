@@ -1,6 +1,8 @@
 import os
 import statistics
 import requests
+from datetime import datetime
+import pandas as pd
 
 from binance.client import Client
 from utils.json_handler import dump_json, load_json
@@ -44,6 +46,24 @@ class BinanceCryptoDataCrawler(BaseGenerator):
         self.crypto_data = load_json(file_path)
         print(f"Load done!")
         return self.crypto_data
+
+    def save_as_csv(self, output_path, symbol, timeframe):
+        data = {"Date": [],"Open": [], "High": [], "Low":[], "Close": [], "Volume": [], "Adj Close": []}
+        
+        for candle_info in self.crypto_data[symbol][timeframe]['data']:
+            data["Date"].append(datetime.fromtimestamp(candle_info['open_time']/1000.0))
+            data["Open"].append(candle_info['open'])
+            data["High"].append(candle_info['high'])
+            data["Low"].append(candle_info['low'])
+            data["Close"].append(candle_info['close'])
+            data["Volume"].append(candle_info['volume'])
+            data["Adj Close"].append(candle_info['close'])
+        
+        df = pd.DataFrame(data=data)
+        # df.index = pd.DatetimeIndex(df['Date'])
+        
+        df.to_csv(output_path, index=False)
+
 
     def load_from_api(self, save_path, mode = 'all'):
         timestamp = self.client._get_earliest_valid_timestamp('BTCUSDT', '1d')

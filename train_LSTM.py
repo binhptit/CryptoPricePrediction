@@ -172,4 +172,4 @@ if __name__ == "__main__":
 					loss_eval = sum(val_losses) / len(val_losses)
 					torch.save(model.state_dict(), f'weights/BiLSTM_Best_wl{args.window_len}_hds{args.hidden_dim}_bs{args.batch_size}_lr{args.learning_rate}.pth')
 				
-				
+			
