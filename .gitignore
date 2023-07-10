@@ -2,3 +2,5 @@ weights/*.pth
 dataset/*
 images/*
 weights/*
+env/*
+config.py

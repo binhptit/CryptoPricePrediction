@@ -21,6 +21,8 @@
 * https://github.com/oliverguhr/transformer-time-series-prediction
 * https://github.com/philipxjm/Deep-Convolution-Stock-Technical-Analysis
 * https://github.com/manthanthakker/BitcoinPrediction
+* https://github.com/yongghongg/stock-screener/tree/main
+* https://github.com/SpiralDevelopment/candlestick-patterns
 
 
 
