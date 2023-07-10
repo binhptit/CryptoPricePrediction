@@ -20,7 +20,7 @@ class BinanceCryptoDataCrawler(BaseGenerator):
         'MANAUSDT', 'SANDUSDT', 'ICPUSDT', 'THETAUSDT', 'EGLDUSDT', 'AXSUSDT', 'AAVEUSDT', 'GRTUSDT', 'FTMUSDT',
         'CHZUSDT', 'BATUSDT', 'DASHUSDT', 'KSMUSDT', 'WAVESUSDT', 'CAKEUSDT', 'ENJUSDT', 'QTUMUSDT']
 
-        self.intervals = ['1h', '4h', '1d']
+        self.intervals = ['1h', '4h', '1d', '1w']
 
         self.crypto_data = {
         }

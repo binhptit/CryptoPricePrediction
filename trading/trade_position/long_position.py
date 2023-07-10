@@ -1,4 +1,7 @@
 from base_position import BasePosition
+from typing import List
+from ..client import Client
+from ..candlestick import CandleStick
 
 class LongPosition(BasePosition):
     """

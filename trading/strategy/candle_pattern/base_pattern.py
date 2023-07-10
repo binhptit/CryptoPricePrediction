@@ -19,3 +19,6 @@ class BasePattern(ABC):
         Runs the strategy.
         """
         pass
+
+    def __repr__(self) -> str:
+        return "Candle pattern:\t"
