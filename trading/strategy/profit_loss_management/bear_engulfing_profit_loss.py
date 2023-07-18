@@ -1,12 +1,12 @@
 from .base_profit_loss import BaseProfitLoss
 
-class BullEngulfingProfitLoss(BaseProfitLoss):
+class BearEngulfingProfitLoss(BaseProfitLoss):
     def __init__(self, candlesticks, candle_idx,):
         super().__init__()
         self.candlesticks = candlesticks
         self.candle_idx = candle_idx
     
-    def run(self, ratio_retracement_for_entry=0.0001, ratio_padding_loss=0.005, rr_ratio=1):
+    def run(self, ratio_retracement_for_entry=0.0001, ratio_padding_loss=0, rr_ratio=1):
         """
         Runs the engulfing pattern.
 
@@ -27,8 +27,8 @@ class BullEngulfingProfitLoss(BaseProfitLoss):
         dif_open_close = abs(open_price - close_price)
         dis_retracement = dif_open_close * ratio_retracement_for_entry
 
-        entry_price = close_price - dis_retracement
-        stop_loss_price = low_price - ratio_padding_loss * dif_open_close
-        take_profit_price = entry_price + (entry_price - stop_loss_price) * rr_ratio
+        entry_price = close_price + dis_retracement
+        stop_loss_price = high_price + ratio_padding_loss * dif_open_close
+        take_profit_price = entry_price - abs(entry_price - stop_loss_price) * rr_ratio
 
         return entry_price, stop_loss_price, take_profit_price

@@ -6,7 +6,10 @@ class Hammer(BasePattern):
     def __init__(self, candlesticks: List[CandleStick]):
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
-    
+        self.trend = "bullish"
+        self.pattern_name = "hammer"
+        self.no_candles = 1
+
     def run(self):
         """
             Finds the Hammer pattern.

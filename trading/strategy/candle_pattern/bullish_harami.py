@@ -6,6 +6,9 @@ class BullishHarami(BasePattern):
     def __init__(self, candlesticks: List[CandleStick]):
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bullish"
+        self.pattern_name = "bullish_harami"
+        self.no_candles = 2
 
     def run(self):
         """

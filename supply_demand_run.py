@@ -1,4 +1,5 @@
 from trading.indicators.suppy_demand import SupplyDemandPrice
+from trading.indicators.rsi import RSI
 from datahub.data_generator.crypto_currency_crawler import BinanceCryptoDataCrawler
 from utils.json_handler import dump_json, load_json
 from datetime import datetime
@@ -73,9 +74,8 @@ def main():
     crypto_data = binance_crypto_data_crawler.load_from_file(r'dataset/lastest_crypto_price_data.json')
     all_candlestick = []
 
-
     time_frame = '4h'
-    for i, candle_info in enumerate(crypto_data['BTCUSDT'][time_frame]['data'][-365:-2]):
+    for i, candle_info in enumerate(crypto_data['BNBUSDT'][time_frame]['data'][-200:]):
         candlestick = CandleStick()
         candlestick.load_candle_stick(candle_info)
 
@@ -85,27 +85,30 @@ def main():
     pivots = sdp.run()
     sdp.plot("images/supply_demand.png")
     
+    rsi = RSI(all_candlestick, None)
+    rsi_results = rsi.run()
+    
     patterns = [
-            BearishEngulfing,
-            BullishEngulfing,
-            Hammer,
-            HangingMan,
-            InvertedHammer,
+            # BearishEngulfing,
+            # BullishEngulfing,
+            # Hammer,
+            # HangingMan,
+            # InvertedHammer,
             # BearishHarami,
             # BullishHarami,
             # DarkCloudCover,
-            DojiStar,
-            Doji,
-            DragonFlyDoji,
-            EveningStarDoji,
-            EveningStar,
-            GraveStoneDoji,
+            # DojiStar,
+            # Doji,
+            # DragonFlyDoji,
+            # EveningStarDoji,
+            # EveningStar,
+            # GraveStoneDoji,
             MorningStar,
             MorningStarDoji,
             # Piercing,
             # RainDrop,
-            ShootingStar,
-            Star
+            # ShootingStar,
+            # Star
     ]
 
     for pattern in patterns:

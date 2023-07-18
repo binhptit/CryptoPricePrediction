@@ -35,7 +35,3 @@ class CandleChart(ABC):
             close_time = candlesticks_df['CloseTime'][i],
             date=candlesticks_df['Date'][i]
         ) for i in range(len(candlesticks_df))]
-    
-    @abstractmethod
-    def plot(self):
-        pass

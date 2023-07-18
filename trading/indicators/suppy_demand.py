@@ -34,10 +34,7 @@ class SupplyDemandPrice(BaseIndicator):
     def __init__(self, candlesticks = None, candlesticks_df = None) -> None:
         super().__init__(candlesticks, candlesticks_df)
         self.candlesticks_df.index = pd.DatetimeIndex(self.candlesticks_df['Date'])
-        # self.candlesticks_df['Date'] = pd.to_datetime(self.candlesticks_df['Date'])
-        # self.candlesticks_df['Date'] = self.candlesticks_df['Date'].apply(datetime.datetime.fromtimestamp)
         self.candlesticks_df['Date'] = self.candlesticks_df['Date'].apply(mpl_dates.date2num)
-        # self.candlesticks_df = self.candlesticks_df.loc[:,['Date', 'Open', 'High', 'Low', 'Close']]
         self.supply_demand_levels = []
 
     def run(self):

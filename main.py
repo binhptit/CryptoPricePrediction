@@ -43,20 +43,26 @@ def calculate_profit_and_loss(entry_price: int, profit_price: int, stop_loss_pri
         low_price = candlestick.low
         close_price = candlestick.close
 
-        print(f"High price: {high_price}. Low price: {low_price}.")
+        # print(f"High price: {high_price}. Low price: {low_price}.")
+        
         
         if low_price <= stop_loss_price <= high_price:
-            profit = -(entry_price - stop_loss_price)
+            if stop_loss_price <= entry_price:
+                profit = -(entry_price - stop_loss_price)
+            else:
+                profit = entry_price - stop_loss_price
             return profit
         elif low_price <= profit_price <= high_price:
-            profit = profit_price - entry_price
+            if profit_price >= entry_price:
+                profit = profit_price - entry_price
+            else:
+                profit = entry_price - profit_price
             return profit
 
     return profit
 
 if __name__ == '__main__':
-    from trading.strategy.candle_pattern.bearish_engulfing import BearEngulfingPattern
-    from trading.strategy.candle_pattern.bullish_engulfing import BullEngulfingPattern
+    from trading.strategy.candle_pattern.hammer import Hammer
 
     from trading.strategy.profit_loss_management.bull_engulfing_profit_loss import BullEngulfingProfitLoss
     from trading.candlestick import CandleStick
@@ -78,19 +84,19 @@ if __name__ == '__main__':
     save_path = r'images/plot/'
 
     binance_crypto_data_crawler = BinanceCryptoDataCrawler()
-    crypto_data = binance_crypto_data_crawler.load_from_file(r'dataset/btc_binance_crypto_price_data.json')
+    crypto_data = binance_crypto_data_crawler.load_from_file(r'dataset/lastest_crypto_price_data.json')
 
     number_winning_candlestick = 0
     total_candlestick = 0
 
     all_candlestick = []
-    for i, candle_info in enumerate(crypto_data['BTCUSDT']['4h']['data'][:]):
+    for i, candle_info in enumerate(crypto_data['BTCUSDT']['4h']['data'][-200:]):
         candlestick = CandleStick()
         candlestick.load_candle_stick(candle_info)
 
         all_candlestick.append(candlestick)
     
-    engulfing_pattern = BullEngulfingPattern(all_candlestick)
+    engulfing_pattern = Hammer(all_candlestick)
 
     engulfing_candle_idxs = engulfing_pattern.run()
 
@@ -100,18 +106,18 @@ if __name__ == '__main__':
 
     profit_history = []
     loss_history = []
-    for engulfing_candle_idx in engulfing_candle_idxs[-30:-19]:
-        d = {"Date": [],"Open": [], "High": [], "Low":[], "Close": []}
+    for engulfing_candle_idx in engulfing_candle_idxs:
+        # d = {"Date": [],"Open": [], "High": [], "Low":[], "Close": []}
 
-        for i in range(engulfing_candle_idx - len_candle_left, engulfing_candle_idx + len_candle_right, 1):
-            candle_info_j = crypto_data['BTCUSDT']['4h']['data'][i]
-            d["Date"].append(datetime.fromtimestamp(candle_info_j['open_time']/1000.0))
-            d["Open"].append(candle_info_j['open'])
-            d["High"].append(candle_info_j['high'])
-            d["Low"].append(candle_info_j['low'])
-            d["Close"].append(candle_info_j['close'])
+        # for i in range(engulfing_candle_idx - len_candle_left, engulfing_candle_idx + len_candle_right, 1):
+        #     candle_info_j = crypto_data['BTCUSDT']['4h']['data'][i]
+        #     d["Date"].append(datetime.fromtimestamp(candle_info_j['open_time']/1000.0))
+        #     d["Open"].append(candle_info_j['open'])
+        #     d["High"].append(candle_info_j['high'])
+        #     d["Low"].append(candle_info_j['low'])
+        #     d["Close"].append(candle_info_j['close'])
 
-        make_plot_from_dataframe(d, save_path, str(engulfing_pattern))
+        # make_plot_from_dataframe(d, save_path, str(engulfing_pattern))
 
         bull_engulfing_profit_loss = BullEngulfingProfitLoss(all_candlestick, engulfing_candle_idx)
         entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run()

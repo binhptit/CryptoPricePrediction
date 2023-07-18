@@ -13,6 +13,9 @@ class HangingMan(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bearish"
+        self.pattern_name = "hangman"
+        self.no_candles = 3
 
     def run(self):
         """
@@ -53,8 +56,8 @@ class HangingMan(BasePattern):
             if (((high - low > 4 * (open - close)) and
                  ((close - low) / (.001 + high - low) >= 0.75) and
                  ((open - low) / (.001 + high - low) >= 0.75)) and
-                prev_high < open and
-                prev_prev_high < open):
+                prev_high <= open and
+                prev_prev_high <= open):
                 found_positions.append(self.candlesticks.index(candlestick))
 
             pre_previous_candlestick = previous_candlestick

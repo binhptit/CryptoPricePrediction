@@ -13,6 +13,9 @@ class EveningStarDoji(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bearish"
+        self.pattern_name = "evening_star_doji"
+        self.no_candles = 3
 
     def run(self):
         """

@@ -6,6 +6,9 @@ class DarkCloudCover(BasePattern):
     def __init__(self, candlesticks: List[CandleStick]):
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bearish"
+        self.pattern_name = "dark_cloud_cover"
+        self.no_candles = 2
 
     def run(self):
         """

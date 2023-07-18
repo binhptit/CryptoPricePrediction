@@ -6,6 +6,9 @@ class InvertedHammer(BasePattern):
     def __init__(self, candlesticks: List[CandleStick]):
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bearish"
+        self.pattern_name = "inverted_hammer"
+        self.no_candles = 1
     
     def run(self):
         """
