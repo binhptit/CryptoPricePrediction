@@ -14,11 +14,8 @@ class BinanceCryptoDataCrawler(BaseGenerator):
         self.client = Client(self.api_key, self.api_secret)
         # self.account_info = self.client.get_account()
         
-        self.symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'SOLUSDT', 'DOTUSDT', 'DAIUSDT',
-        'BCHUSDT', 'LTCUSDT', 'NEARUSDT', 'AVAXUSDT', 'CELOUSDT', 'TRXUSDT', 'XLMUSDT', 'FTTUSDT', 'TRXUSDT', 
-        'LINKUSDT', 'EOSUSDT', 'MATICUSDT', 'ALGOUSDT', 'ATOMUSDT', 'UNIUSDT', 'ETCUSDT', 'TFUELUSDT', 'VETUSDT',
-        'MANAUSDT', 'SANDUSDT', 'ICPUSDT', 'THETAUSDT', 'EGLDUSDT', 'AXSUSDT', 'AAVEUSDT', 'GRTUSDT', 'FTMUSDT',
-        'CHZUSDT', 'BATUSDT', 'DASHUSDT', 'KSMUSDT', 'WAVESUSDT', 'CAKEUSDT', 'ENJUSDT', 'QTUMUSDT']
+        self.symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
+        'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT']
 
         self.intervals = ['1h', '4h', '1d', '1w']
 

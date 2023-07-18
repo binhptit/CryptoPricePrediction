@@ -46,6 +46,7 @@ def task(symbol, time_frames, data_collector, all_pattern_detection, telegram_no
             full_message = f"\nCurrent time: {dt_string}\n"
             count_send_notice = 0
 
+            all_pivots = []
             for time_frame in time_frames:
                 message = ""
                 logging.info(f"--------------\nTimeframe: {time_frame}||{symbol}")
@@ -80,8 +81,11 @@ def task(symbol, time_frames, data_collector, all_pattern_detection, telegram_no
                 supply_demand_detector = SupplyDemandPrice(candlesticks, None)
                 pivots = supply_demand_detector.run()
                 
+                if time_frame not in ["1h"]:
+                    all_pivots.extend(pivots)
+                
                 overlap_area = []
-                for i, level in pivots:
+                for i, level in all_pivots:
                     upper_bound = level * 1.02
                     lower_bound = level * 0.98
 
@@ -113,15 +117,15 @@ def main():
     binance_data_collector = BinanceCryptoDataCrawler(config.binance_api, config.binance_secret)
     forex_data_collector = ForexDataCollector()
 
-    crypto_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'SOLUSDT', 
-                     'DOTUSDT', 'BCHUSDT', 'LTCUSDT', 'NEARUSDT']
+    crypto_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 
+                     'BCHUSDT', 'LTCUSDT']
     
     # Timeframe and limit
     crypto_time_frames = {
-        "1h": 600,
-        "4h": 400,
-        "1d": 365,
         "1w": 88,
+        "1d": 365,
+        "4h": 400,
+        "1h": 600,
     }
 
     forex_time_frames = {
@@ -130,7 +134,7 @@ def main():
         "1wk": 100,
         # "1mo": 100,
     }
-    forex_symbols = ["EURUSD=X", "JPY=X", "GC=F"]
+    forex_symbols = ["GC=F"]
     telegram_notification = TelegramNotification()
 
 

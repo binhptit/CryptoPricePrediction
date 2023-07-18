@@ -13,6 +13,9 @@ class ShootingStar(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bearish"
+        self.pattern_name = "shooting_star"
+        self.no_candles = 2
 
     def run(self):
         """

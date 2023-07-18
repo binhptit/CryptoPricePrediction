@@ -13,6 +13,9 @@ class MorningStar(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bullish"
+        self.pattern_name = "morning_star"
+        self.no_candles = 3
 
     def run(self):
         """
@@ -37,19 +40,13 @@ class MorningStar(BasePattern):
             
             prev_open = previous_candlestick.open
             prev_close = previous_candlestick.close
-            prev_high = previous_candlestick.high
-            prev_low = previous_candlestick.low
-
+           
             prev_prev_open = pre_previous_candlestick.open
             prev_prev_close = pre_previous_candlestick.close
-            prev_prev_high = pre_previous_candlestick.high
-            prev_prev_low = pre_previous_candlestick.low
-
+            
             open = candlestick.open
             close = candlestick.close
-            high = candlestick.high
-            low = candlestick.low
-
+            
             if (max(prev_open, prev_close) <= prev_prev_close <= prev_prev_open and
                 close > open >= max(prev_open, prev_close)):
                 found_positions.append(self.candlesticks.index(candlestick))

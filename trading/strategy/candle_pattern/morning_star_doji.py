@@ -13,6 +13,9 @@ class MorningStarDoji(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bullish"
+        self.pattern_name = "morning_star_doji"
+        self.no_candles = 3
 
     def run(self):
         """

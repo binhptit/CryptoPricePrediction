@@ -14,7 +14,15 @@ class ForexDataCollector(BaseGenerator):
         Initializes the forex data collector.
         """
         super().__init__()
-        pass
+        self.symbols = []
+
+        self.intervals = ['1h', '4h', '1d', '1w']
+
+        self.forex_data = {
+        }
+
+    def load_from_api(self, save_path, mode = 'all'):
+        pass 
 
     def get_lastest_k_candles(
         self, symbol: str = "GC=F", interval: str = "1h", k: int = 5

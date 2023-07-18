@@ -23,6 +23,7 @@
 * https://github.com/manthanthakker/BitcoinPrediction
 * https://github.com/yongghongg/stock-screener/tree/main
 * https://github.com/SpiralDevelopment/candlestick-patterns
+* https://github.com/lukaszbinden/rsi_tradingview.git
 
 
 

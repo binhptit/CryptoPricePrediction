@@ -6,6 +6,9 @@ class Doji(BasePattern):
     def __init__(self, candlesticks: List[CandleStick]):
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "unsure"
+        self.pattern_name = "doji"
+        self.no_candles = 1
     
     def run(self):
         """

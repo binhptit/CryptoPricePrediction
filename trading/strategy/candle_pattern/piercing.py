@@ -13,6 +13,9 @@ class Piercing(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "unsure"
+        self.pattern_name = "piercing"
+        self.no_candles = 2
 
     def run(self):
         """

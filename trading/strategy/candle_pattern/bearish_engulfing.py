@@ -13,6 +13,9 @@ class BearishEngulfing(BasePattern):
         """
         super().__init__(candlesticks)
         self.candlesticks = candlesticks
+        self.trend = "bearish"
+        self.pattern_name = "bearish_engulfing"
+        self.no_candles = 2
 
     def run(self):
         """
