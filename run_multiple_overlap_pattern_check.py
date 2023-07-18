@@ -128,7 +128,7 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
         logging.info("Sleep for 5 minutes")
         time.sleep(60*5)
 
-def get_allow_pattern_dict(transaction_histore_file = r'all_transaction_history.json', symbols=[]):
+def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_history.json', symbols=[]):
     pattern_statistics = {}
     allow_pattern = {}
     time_frame = ['4h', '1d', '1w']
