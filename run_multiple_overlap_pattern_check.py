@@ -65,7 +65,7 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
         # Get the current time
         current_time = datetime.now()
         dt_string = current_time.strftime("%d/%m/%Y %H:%M:%S")
-        if 59 >= current_time.minute >= 0 and last_hour != current_time.hour:
+        if 6 >= current_time.minute >= 0 and last_hour != current_time.hour and current_time.hour in [0, 4, 8, 12, 16, 20]:
             full_message = f"\nCurrent time: {dt_string}\n"
             count_send_notice = 0
 
@@ -165,6 +165,15 @@ def main():
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
         'SOLUSDT', 'DOTUSDT', 'BCHUSDT', 
         'LTCUSDT', 'XRPUSDT', 'AVAXUSDT'
+    ]
+
+    crypto_symbols = [
+        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
+        # 'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
+        # 'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
+        # 'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 
+        # 'EOSUSDT', 'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 
+        # 'XEMUSDT', 'MKRUSDT', 'KSMUSDT',
     ]
     
     # Timeframe and limit
