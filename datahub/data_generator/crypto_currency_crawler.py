@@ -14,8 +14,14 @@ class BinanceCryptoDataCrawler(BaseGenerator):
         self.client = Client(self.api_key, self.api_secret)
         # self.account_info = self.client.get_account()
         
-        self.symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
-        'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT']
+        self.symbols = [
+            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
+            'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
+            'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
+            'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 'EOSUSDT',
+            'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 'XEMUSDT', 'MKRUSDT', 'KSMUSDT',
+            
+            ]
 
         self.intervals = ['1h', '4h', '1d', '1w']
 
@@ -116,7 +122,7 @@ class BinanceCryptoDataCrawler(BaseGenerator):
             print(f"\tDone {symbol}. -//")
 
         dump_json(save_path, self.crypto_data)
-
+        print(f"Save data to {save_path} done!")
         return self.crypto_data
 
     def get_lastest_k_candles(

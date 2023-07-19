@@ -66,6 +66,9 @@ def plot(candlesticks_df, pattern_indexex, output_path, timeframe='4h'):
     # Save fig
     plt.savefig(output_path)
 
+    # Release memory
+    plt.close(fig)
+
 def make_plot_from_dataframe(d, save_path, name):
     save_path += name
 
@@ -162,12 +165,13 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
         for idx in multiple_candle_idx:
             idx_pattern[idx].append(pattern_detection)
 
-    padding_right = 15
-    padding_left = 50
+    
     transaction_history = {}
     for i in range(len(all_candlestick)):
         if len(idx_pattern[i]) > 1 and idx_pattern[i][0].no_candles != idx_pattern[i][1].no_candles \
             and idx_pattern[i][0].trend == idx_pattern[i][1].trend:
+            padding_right = 15
+            padding_left = 50
             padding_left = i if i < padding_left else padding_left
             padding_right = len(all_candlestick) - i if len(all_candlestick) - i < padding_right else padding_right
             d = {"Date": [],"Open": [], "High": [], "Low":[], "Close": []}
@@ -219,7 +223,7 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
 
             pd_candlesticks = pd.DataFrame(data=d)
             win_or_lose = "win" if profit > 0 else "lose"
-            # plot(pd_candlesticks, candle_with_price, save_path + "/" + win_or_lose + "_" + str(all_candlestick[i].date) + ".png")
+            plot(pd_candlesticks, candle_with_price, save_path + "/" + win_or_lose + "_" + str(all_candlestick[i].date) + ".png")
     
     # Statisic
     # for pattern_name in transaction_history:
@@ -242,6 +246,14 @@ def main():
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
         'SOLUSDT', 'DOTUSDT', 'BCHUSDT', 
         'LTCUSDT', 'XRPUSDT', 'AVAXUSDT'
+    ]
+
+    symbols = [
+            # 'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
+            # 'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
+            'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
+            # 'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 'EOSUSDT',
+            # 'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 'XEMUSDT', 'MKRUSDT', 'KSMUSDT'
     ]
 
     headers = [
