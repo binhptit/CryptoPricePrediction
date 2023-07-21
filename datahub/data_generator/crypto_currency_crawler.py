@@ -23,7 +23,7 @@ class BinanceCryptoDataCrawler(BaseGenerator):
             
             ]
 
-        self.intervals = ['1h', '4h', '1d', '1w']
+        self.intervals = ['15m', '30m', '1h', '4h', '1d', '1w']
 
         self.crypto_data = {
         }

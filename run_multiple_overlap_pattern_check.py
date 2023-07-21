@@ -4,7 +4,8 @@ from datahub.data_generator.forex_data_collector import ForexDataCollector
 from trading.candlestick import CandleStick
 import config
 import json
-from trading.indicators.suppy_demand import SupplyDemandPrice
+from trading.strategy.profit_loss_management.bull_engulfing_profit_loss import BullEngulfingProfitLoss
+from trading.strategy.profit_loss_management.bear_engulfing_profit_loss import BearEngulfingProfitLoss
 from trading.strategy.candle_pattern import (
         BearishEngulfing,
         BullishEngulfing,
@@ -108,9 +109,22 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
 
                     if overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
                         overlap_pattern_name = None
+                    else:
+                        pattern_statistic = allow_pattern_dict[symbol][time_frame][overlap_pattern_name]                        
+
+                        if idx_pattern[last_candle_idx][0].trend == 'bearish':
+                            bear_engulfing_profit_loss = BearEngulfingProfitLoss(candlesticks, last_candle_idx)
+                            entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
+                        else:
+                            bull_engulfing_profit_loss = BullEngulfingProfitLoss(candlesticks, last_candle_idx)
+                            entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
+                        how_much_money_lose_in_failure_case = 5.0
+                        change_ratio = abs(entry_price - stop_loss_price) / entry_price
+                        total_usdt = how_much_money_lose_in_failure_case / change_ratio
 
                 if overlap_pattern_name is not None:
-                    message += f"Overlaped Pattern: {overlap_pattern_name}.\n"
+                    message += f"Overlaped Pattern: {overlap_pattern_name}.[{pattern_statistic['win_rate']}]({pattern_statistic['total_win_trade']}:{pattern_statistic['total_lose_trade']}:{pattern_statistic['total_trade']})\n"
+                    message += f"Trade with {total_usdt}$ with maximum loss {how_much_money_lose_in_failure_case}."
                     logging.info(f"Found Pattern: {overlap_pattern_name}")
                 
                 if overlap_pattern_name is not None:
@@ -144,7 +158,7 @@ def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_
                     total_trade = len([t for t in transactions if t['symbol'] == symbol and t['time_frame'] == tf])
                     win_rate = total_win_trade / total_trade if total_trade > 0 else 0
 
-                    if win_rate < 0.4 or total_trade < 3:
+                    if win_rate < 0.55 or total_trade < 6:
                         continue
 
                     if symbol not in allow_pattern:
@@ -153,7 +167,12 @@ def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = []
 
-                    allow_pattern[symbol][tf].append(pattern.replace("/", ""))
+                    allow_pattern[symbol][tf][pattern.replace("/", "")] = {
+                        "total_win_trade": total_win_trade,
+                        "total_lose_trade": total_trade - total_win_trade,
+                        "total_trade": total_trade,
+                        "win_rate": win_rate
+                    }
 
     return allow_pattern
     
@@ -169,11 +188,11 @@ def main():
 
     crypto_symbols = [
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
-        # 'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
-        # 'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
-        # 'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 
-        # 'EOSUSDT', 'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 
-        # 'XEMUSDT', 'MKRUSDT', 'KSMUSDT',
+        'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
+        'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
+        'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 
+        'EOSUSDT', 'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 
+        'XEMUSDT', 'MKRUSDT', 'KSMUSDT',
     ]
     
     # Timeframe and limit
