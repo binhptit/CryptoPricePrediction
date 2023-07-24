@@ -158,14 +158,14 @@ def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_
                     total_trade = len([t for t in transactions if t['symbol'] == symbol and t['time_frame'] == tf])
                     win_rate = total_win_trade / total_trade if total_trade > 0 else 0
 
-                    if win_rate < 0.55 or total_trade < 6:
-                        continue
-
                     if symbol not in allow_pattern:
                         allow_pattern[symbol] = {}
 
                     if tf not in allow_pattern[symbol]:
-                        allow_pattern[symbol][tf] = []
+                        allow_pattern[symbol][tf] = {}
+
+                    if win_rate < 0.55 or total_trade < 6:
+                        continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
                         "total_win_trade": total_win_trade,
