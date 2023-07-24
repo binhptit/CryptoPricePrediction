@@ -52,6 +52,9 @@ def plot(candlesticks_df, pattern_indexex, output_path, timeframe='4h'):
     elif timeframe == '1w':
         width_candle_ohlc = 8.0
         figsize = (10, 9)
+    elif timeframe == '1h':
+        width_candle_ohlc = 0.0001
+        figsize = (15, 9)
 
     candlesticks_df.index = pd.DatetimeIndex(candlesticks_df['Date'])
     candlesticks_df['Date'] = candlesticks_df['Date'].apply(mpl_dates.date2num)
@@ -241,7 +244,7 @@ def main():
     binance_crypto_data_crawler = BinanceCryptoDataCrawler()
     crypto_data = binance_crypto_data_crawler.load_from_file(r'dataset/lastest_crypto_price_data.json')
 
-    time_frames = ['4h', '1d', '1w']
+    time_frames = ['15m', '30m','1h', '4h', '1d', '1w']
     symbols = [
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
         'SOLUSDT', 'DOTUSDT', 'BCHUSDT', 
