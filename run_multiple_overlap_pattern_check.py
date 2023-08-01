@@ -32,6 +32,7 @@ from datetime import datetime
 import time
 import logging
 import multiprocessing
+logging.basicConfig(filename='logs/chart_tracking.log', level=logging.INFO)
 
 single_candle_patterns = [
             BearishEngulfing,
@@ -57,96 +58,26 @@ multiple_candle_patterns = [
         HangingMan,
     ]
 
-def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notification):
-    logging.basicConfig(filename='logs/chart_tracking.log', level=logging.INFO)
-    logging.info(f"Start tracking chart for {symbol} with timeframes {time_frames}")
+crypto_time_frames = {
+    "1w": 88,
+    "1d": 356,
+    "4h": 356 * 6,
+    "30m": 200,
+    "1h": 600,
+    "15m": 600,
+}
 
-    last_hour = -1
-    while True:
-        # Get the current time
-        current_time = datetime.now()
-        dt_string = current_time.strftime("%d/%m/%Y %H:%M:%S")
-        if 6 >= current_time.minute >= 0 and last_hour != current_time.hour and current_time.hour in [0, 4, 8, 12, 16, 20]:
-            full_message = f"\nCurrent time: {dt_string}\n"
-            count_send_notice = 0
+forex_time_frames = {
+    "30m": 200,
+    "1h": 600,
+    "1d": 365,
+}
 
-            for time_frame in time_frames:
-                message = ""
-                message += f"--------------\nTimeframe: {time_frame}||{symbol}\n"
-                candles_data = data_collector.get_lastest_k_candles(symbol, time_frame, time_frames[time_frame])
-
-                logging.info(f"[{symbol}_{time_frame}] Get {len(candles_data)} candles successfully")
-                candlesticks = []
-                for i, candle_info in enumerate(candles_data):
-                    candlestick = CandleStick()
-                    candlestick.load_candle_stick(candle_info)
-
-                    candlesticks.append(candlestick)
-                
-                try:
-                    idx_pattern = {i: [] for i in range(len(candlesticks))}
-                    for pattern in single_candle_patterns:
-                        pattern_detection = pattern(candlesticks)
-                        single_candle_idx = pattern_detection.run()
-                        for idx in single_candle_idx:
-                            idx_pattern[idx].append(pattern_detection)
-                except Exception as e:
-                    return None
-                
-                multiple_candle_idx = []
-                for pattern in multiple_candle_patterns:
-                    pattern_detection = pattern(candlesticks)
-                    multiple_candle_idx = pattern_detection.run()
-                    for idx in multiple_candle_idx:
-                        idx_pattern[idx].append(pattern_detection)
-               
-                last_candle_idx = len(candlesticks) - 2
-                # Check if last candlestick is in pattern
-                overlap_pattern_name = None
-                if len(idx_pattern[last_candle_idx]) > 1 and idx_pattern[last_candle_idx][0].no_candles != idx_pattern[last_candle_idx][1].no_candles \
-                    and idx_pattern[last_candle_idx][0].trend == idx_pattern[last_candle_idx][1].trend:
-                    overlap_pattern_name = idx_pattern[last_candle_idx][0].pattern_name + "_" + idx_pattern[last_candle_idx][1].pattern_name
-
-                    if overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
-                        overlap_pattern_name = None
-                    else:
-                        pattern_statistic = allow_pattern_dict[symbol][time_frame][overlap_pattern_name]                        
-
-                        if idx_pattern[last_candle_idx][0].trend == 'bearish':
-                            bear_engulfing_profit_loss = BearEngulfingProfitLoss(candlesticks, last_candle_idx)
-                            entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
-                        else:
-                            bull_engulfing_profit_loss = BullEngulfingProfitLoss(candlesticks, last_candle_idx)
-                            entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
-                        how_much_money_lose_in_failure_case = 5.0
-                        change_ratio = abs(entry_price - stop_loss_price) / entry_price
-                        total_usdt = how_much_money_lose_in_failure_case / change_ratio
-
-                if overlap_pattern_name is not None:
-                    message += f"Overlaped Pattern: {overlap_pattern_name}.[{pattern_statistic['win_rate']}]({pattern_statistic['total_win_trade']}:{pattern_statistic['total_lose_trade']}:{pattern_statistic['total_trade']})\n"
-                    message += f"Trade with {total_usdt}$ with maximum loss {how_much_money_lose_in_failure_case}."
-                    logging.info(f"Found Pattern: {overlap_pattern_name}")
-                
-                if overlap_pattern_name is not None:
-                    count_send_notice += 1
-                    full_message += message
-
-            if count_send_notice:
-                telegram_notification.send(full_message)
-                logging.info(full_message)
-                logging.info("=> Send notification successfully")
-            
-            last_hour = current_time.hour
-
-        # Sleep for 5 minutes
-        logging.info("Sleep for 5 minutes")
-        time.sleep(60*5)
-
-def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_history.json', symbols=[]):
+def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_transaction_history.json', symbols=[]):
     pattern_statistics = {}
     allow_pattern = {}
-    time_frame = ['4h', '1d', '1w']
-    with open(transaction_histore_file, 'r') as f:
+    time_frame = ['15m', '30m', '1h', '4h', '1d', '1w']
+    with open(transaction_history_file, 'r') as f:
         transaction_history = json.load(f)
 
         for pattern, transactions in transaction_history.items():
@@ -165,7 +96,7 @@ def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_
                         allow_pattern[symbol] = {}
 
                     if tf not in allow_pattern[symbol]:
-                        allow_pattern[symbol][tf] = []
+                        allow_pattern[symbol][tf] = {}
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
                         "total_win_trade": total_win_trade,
@@ -176,6 +107,137 @@ def get_allow_pattern_dict(transaction_histore_file = r'dataset/all_transaction_
 
     return allow_pattern
     
+def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict, telegram_notification):
+    logging.info(f"Start tracking chart for {symbol} with timeframes {time_frame}")
+
+    current_time = datetime.now()
+    dt_string = current_time.strftime("%d/%m/%Y %H:%M:%S")
+
+    full_message = f"\nCurrent time: {dt_string}\n"
+    count_send_notice = 0
+
+    message = ""
+    message += f"--------------\nTimeframe: {time_frame}||{symbol}\n"
+    candles_data = data_collector.get_lastest_k_candles(symbol, time_frame, 50)
+
+    logging.info(f"[{symbol}_{time_frame}] Get {len(candles_data)} candles successfully")
+    candlesticks = []
+    for i, candle_info in enumerate(candles_data):
+        candlestick = CandleStick()
+        candlestick.load_candle_stick(candle_info)
+
+        candlesticks.append(candlestick)
+    
+    try:
+        idx_pattern = {i: [] for i in range(len(candlesticks))}
+        for pattern in single_candle_patterns:
+            pattern_detection = pattern(candlesticks)
+            single_candle_idx = pattern_detection.run()
+            for idx in single_candle_idx:
+                idx_pattern[idx].append(pattern_detection)
+    except Exception as e:
+        return None
+    
+    multiple_candle_idx = []
+    for pattern in multiple_candle_patterns:
+        pattern_detection = pattern(candlesticks)
+        multiple_candle_idx = pattern_detection.run()
+        for idx in multiple_candle_idx:
+            idx_pattern[idx].append(pattern_detection)
+
+    last_candle_idx = len(candlesticks) - 2
+    # Check if last candlestick is in pattern
+    overlap_pattern_name = None
+    if (len(idx_pattern[last_candle_idx]) == 1) or (len(idx_pattern[last_candle_idx]) > 1 \
+        and idx_pattern[last_candle_idx][0].no_candles != idx_pattern[last_candle_idx][1].no_candles \
+        and idx_pattern[last_candle_idx][0].trend == idx_pattern[last_candle_idx][1].trend):
+
+        try:
+            overlap_pattern_name = idx_pattern[last_candle_idx][0].pattern_name + "_" + idx_pattern[last_candle_idx][1].pattern_name
+        except:
+            overlap_pattern_name = idx_pattern[last_candle_idx][0].pattern_name
+            
+        if time_frame not in allow_pattern_dict[symbol] or overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
+            overlap_pattern_name = None
+        else:
+            pattern_statistic = allow_pattern_dict[symbol][time_frame][overlap_pattern_name]                        
+
+            if idx_pattern[last_candle_idx][0].trend == 'bearish':
+                bear_engulfing_profit_loss = BearEngulfingProfitLoss(candlesticks, last_candle_idx)
+                entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
+            else:
+                bull_engulfing_profit_loss = BullEngulfingProfitLoss(candlesticks, last_candle_idx)
+                entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
+            
+            how_much_money_lose_in_failure_case = 5.0
+            change_ratio = abs(entry_price - stop_loss_price) / entry_price
+            total_usdt = int(how_much_money_lose_in_failure_case / change_ratio)
+
+    if overlap_pattern_name is not None:
+        long_or_short = "LONG" if idx_pattern[last_candle_idx][0].trend == "bullish" else "SHORT"
+        message += f"Overlaped Pattern: {overlap_pattern_name}.[{pattern_statistic['win_rate']:.2f}%]({pattern_statistic['total_win_trade']}:{pattern_statistic['total_lose_trade']}:{pattern_statistic['total_trade']})\n"
+        message += f"Trade {total_usdt}$. Maximum loss:{how_much_money_lose_in_failure_case}$.\n"
+        message += f"[{long_or_short}] \nEntry:{entry_price:.4f}, \nStop:{stop_loss_price:.4f}, \nProfit:{take_profit_price:.4f}\n"        
+        logging.info(f"Found Pattern: {overlap_pattern_name}")
+    
+        count_send_notice += 1
+        full_message += message
+
+    if count_send_notice:
+        telegram_notification.send(full_message)
+        logging.info(full_message)
+        logging.info("=> Send notification successfully")
+
+def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notification):    
+    while True:
+        # Get the current time
+        current_time = datetime.now()                
+        minute_value = current_time.minute
+        hour_value = current_time.hour
+
+        # Reset minute and hour value for test
+        minute_value = 0
+        hour_value = 0
+
+        is_analyze = False
+        if minute_value in [0, 1, 15, 16, 30, 31, 45, 46] and '15m' in time_frames:
+            # Call analyze and send noti 15m
+            is_analyze = True
+            analyze_and_send_noti(symbol, '15m', data_collector, allow_pattern_dict, telegram_notification)
+        
+        if minute_value in [0, 1, 30, 31] and '30m' in time_frames:
+            # Call analyze and send noti 30m
+            is_analyze = True
+            analyze_and_send_noti(symbol, '30m', data_collector, allow_pattern_dict, telegram_notification)
+
+        if minute_value in [0, 1] and '1h' in time_frames:
+            # Call analyze and send noti 1h
+            is_analyze = True
+            analyze_and_send_noti(symbol, '1h', data_collector, allow_pattern_dict, telegram_notification)
+        
+        if hour_value in [0, 4, 8, 12, 16, 20] and minute_value in [0, 1] and '4h' in time_frames:
+            # Call analyze and send noti 4h
+            is_analyze = True
+            analyze_and_send_noti(symbol, '4h', data_collector, allow_pattern_dict, telegram_notification)
+        
+        if hour_value == 0 and minute_value in [0, 1] and '1d' in time_frames:
+            # Call analyze and send noti 1d
+            is_analyze = True
+            analyze_and_send_noti(symbol, '1d', data_collector, allow_pattern_dict, telegram_notification)
+
+        if hour_value == 0 and current_time.weekday() == 0 and minute_value in [0, 1] and '1w' in time_frames:
+            # Call analyze and send noti 1w
+            is_analyze = True
+            analyze_and_send_noti(symbol, '1w', data_collector, allow_pattern_dict, telegram_notification)
+
+        sleep_minute = 1
+        if is_analyze:
+            sleep_minute = 10
+
+        # Sleep for 1 minutes
+        logging.info(f"Sleep for {sleep_minute} minutes")
+        time.sleep(60*sleep_minute)
+
 def main():
     binance_data_collector = BinanceCryptoDataCrawler(config.binance_api, config.binance_secret)
     forex_data_collector = ForexDataCollector()
@@ -190,40 +252,45 @@ def main():
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
         'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
         'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
-        'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 
+        'FILUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 
         'EOSUSDT', 'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 
-        'XEMUSDT', 'MKRUSDT', 'KSMUSDT',
+        'XEMUSDT', 'KSMUSDT',
     ]
     
     # Timeframe and limit
-    crypto_time_frames = {
-        "1w": 88,
-        "1d": 356,
-        "4h": 356 * 6,
-    }
 
-    forex_time_frames = {
-        "1h": 600,
-        "1d": 365,
-        "1wk": 100,
-        # "1mo": 100,
-    }
-    forex_symbols = ["GC=F"]
+    forex_symbols = [
+        "GC=F",
+        "EURUSD=X",
+        "JPY=X",
+        "GBPUSD=X",
+        "AUDUSD=X",
+        "GBPJPY=X",
+        "EURGBP=X",
+        "EURCAD=X",
+        "EURSEK=X",
+        "EURCHF=X",
+        "EURJPY=X"
+    ]
     telegram_notification = TelegramNotification()
 
     processes = []
-    allow_pattern_dict = get_allow_pattern_dict(symbols=crypto_symbols)
+    # allow_pattern_dict = get_allow_pattern_dict(symbols=crypto_symbols)
+    # logging.info(f"[Crypto] Load allow attern dict: {allow_pattern_dict} successfully")
 
     # Start the processes
-    for symbol in crypto_symbols:
-        process = multiprocessing.Process(target=task, args=(symbol, crypto_time_frames, binance_data_collector, allow_pattern_dict, telegram_notification))
-        process.start()
-        processes.append(process)
-    
-    # for symbol in forex_symbols:
-    #     process = multiprocessing.Process(target=task, args=(symbol, forex_time_frames, forex_data_collector, allow_pattern_dict, telegram_notification))
+    # for symbol in crypto_symbols:
+    #     process = multiprocessing.Process(target=task, args=(symbol, crypto_time_frames, binance_data_collector, allow_pattern_dict, telegram_notification))
     #     process.start()
     #     processes.append(process)
+    
+    forex_allow_pattern_dict = get_allow_pattern_dict(transaction_history_file="dataset/forex_all_transaction_history.json",symbols=forex_symbols)
+    logging.info(f"[Forex] Load allow pattern dict: {forex_allow_pattern_dict} successfully")
+
+    for symbol in forex_symbols:
+        process = multiprocessing.Process(target=task, args=(symbol, forex_time_frames, forex_data_collector, forex_allow_pattern_dict, telegram_notification))
+        process.start()
+        processes.append(process)
 
     # Wait for all processes to complete
     for process in processes:
