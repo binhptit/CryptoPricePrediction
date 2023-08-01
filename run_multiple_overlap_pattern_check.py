@@ -196,8 +196,8 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
         hour_value = current_time.hour
 
         # Reset minute and hour value for test
-        minute_value = 0
-        hour_value = 0
+        # minute_value = 0
+        # hour_value = 0
 
         is_analyze = False
         if minute_value in [0, 1, 15, 16, 30, 31, 45, 46] and '15m' in time_frames:
@@ -269,20 +269,18 @@ def main():
         "EURGBP=X",
         "EURCAD=X",
         "EURSEK=X",
-        "EURCHF=X",
         "EURJPY=X"
     ]
-    telegram_notification = TelegramNotification()
+    telegram_notification = TelegramNotification(True)
 
     processes = []
-    # allow_pattern_dict = get_allow_pattern_dict(symbols=crypto_symbols)
-    # logging.info(f"[Crypto] Load allow attern dict: {allow_pattern_dict} successfully")
+    allow_pattern_dict = get_allow_pattern_dict(symbols=crypto_symbols)
+    logging.info(f"[Crypto] Load allow attern dict: {allow_pattern_dict} successfully")
 
-    # Start the processes
-    # for symbol in crypto_symbols:
-    #     process = multiprocessing.Process(target=task, args=(symbol, crypto_time_frames, binance_data_collector, allow_pattern_dict, telegram_notification))
-    #     process.start()
-    #     processes.append(process)
+    for symbol in crypto_symbols:
+        process = multiprocessing.Process(target=task, args=(symbol, crypto_time_frames, binance_data_collector, allow_pattern_dict, telegram_notification))
+        process.start()
+        processes.append(process)
     
     forex_allow_pattern_dict = get_allow_pattern_dict(transaction_history_file="dataset/forex_all_transaction_history.json",symbols=forex_symbols)
     logging.info(f"[Forex] Load allow pattern dict: {forex_allow_pattern_dict} successfully")
