@@ -1,7 +1,7 @@
 import json
 
 def main():
-    transaction_histore_file = r'all_transaction_history.json'
+    transaction_histore_file = r'dataset/crypto_all_transaction_history.json'
 
     with open(transaction_histore_file, 'r') as f:
         transaction_history = json.load(f)

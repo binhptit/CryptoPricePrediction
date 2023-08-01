@@ -1,6 +1,6 @@
 from trading.indicators.suppy_demand import SupplyDemandPrice
 from trading.indicators.rsi import RSI
-from datahub.data_generator.crypto_currency_crawler import BinanceCryptoDataCrawler
+from datahub.data_generator.forex_data_collector import ForexDataCollector
 from utils.json_handler import dump_json, load_json
 from datetime import datetime
 from trading.strategy.profit_loss_management.bull_engulfing_profit_loss import BullEngulfingProfitLoss
@@ -92,7 +92,7 @@ def make_plot_from_dataframe(d, save_path, name):
         savefig=filename
         )
 
-def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date="01/12/2022", backtest_candle=1000):
+def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="01/12/2022", backtest_candle=1000):
     print(f"Back test for {symbol} on {time_frame} time frame from {start_date} to {end_date}")
     all_candlestick = []
 
@@ -106,7 +106,7 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
     # elif time_frame == '1h':
     #     backtest_candle = 365 * 6 * 2
 
-    for i, candle_info in enumerate(crypto_data[symbol][time_frame]['data'][:]):
+    for i, candle_info in enumerate(forex_data[symbol][time_frame]['data'][:]):
         try:
             candle_date = datetime.fromtimestamp(int(candle_info['open_time']) / 1000)
         except Exception as e:
@@ -149,6 +149,10 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
     rsi = RSI(all_candlestick, None)
     rsi_values = rsi.run() 
 
+    supply_demand_detector = SupplyDemandPrice(all_candlestick, None)
+    all_pivots = supply_demand_detector.run()
+    supply_demand_detector.plot("images/supply_demand.png")
+
     try:
         idx_pattern = {i: [] for i in range(len(all_candlestick))}
         for pattern in single_candle_patterns:
@@ -173,8 +177,24 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
     
     transaction_history = {}
     for i in range(len(all_candlestick)):
-        if (len(idx_pattern[i]) == 1) or (len(idx_pattern[i]) > 1 \
+        if len(idx_pattern[i]) > 0 or (len(idx_pattern[i]) > 1 \
             and idx_pattern[i][0].trend == idx_pattern[i][1].trend):
+            # and idx_pattern[i][0].no_candles != idx_pattern[i][1].no_candles \
+            # and idx_pattern[i][0].trend == idx_pattern[i][1].trend \:
+            overlap_area = []
+            for ii, level in all_pivots:
+                upper_bound = level * 1.005
+                lower_bound = level * 0.995
+                
+                last_candle_stick = all_candlestick[i]
+                if (last_candle_stick.low <= upper_bound and last_candle_stick.low >= lower_bound) \
+                or (last_candle_stick.high <= upper_bound and last_candle_stick.high >= lower_bound) \
+                or (last_candle_stick.high >= upper_bound and last_candle_stick.low <= lower_bound):
+                    overlap_area.append(level)
+
+            if overlap_area == []:
+                continue
+
             padding_right = 15
             padding_left = 50
             padding_left = i if i < padding_left else padding_left
@@ -193,7 +213,7 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
             save_path = f'images/plot/{symbol}/{start_date}-{end_date}/{time_frame}/'
             try:
                 overlap_pattern_name = idx_pattern[i][0].pattern_name + "_" + idx_pattern[i][1].pattern_name + "/"
-            except:
+            except Exception as e:
                 overlap_pattern_name = idx_pattern[i][0].pattern_name + "/"
 
             save_path += overlap_pattern_name
@@ -247,25 +267,27 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
     return transaction_history
 
 def main():
-    binance_crypto_data_crawler = BinanceCryptoDataCrawler()
-    crypto_data = binance_crypto_data_crawler.load_from_file(r'dataset/lastest_crypto_price_data.json')
+    forex_data_crawler = ForexDataCollector()
+    forex_data = forex_data_crawler.load_from_file(r'dataset/lastest_forex_price_data.json')
 
     time_frames = [
-        '15m', '30m','1h', 
-        '4h', '1d', '1w'
-    ]
-    symbols = [
-        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
-        'SOLUSDT', 'DOTUSDT', 'BCHUSDT', 
-        'LTCUSDT', 'XRPUSDT', 'AVAXUSDT'
+        '30m','1h', '1d'
     ]
 
     symbols = [
-            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
-            'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
-            'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
-            'FILUSDT', 'ICPUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 'EOSUSDT',
-            'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 'XEMUSDT', 'MKRUSDT', 'KSMUSDT'
+        "GC=F",
+        "EURUSD=X",
+        "JPY=X",
+        "GBPUSD=X",
+        "AUDUSD=X",
+        "EURJPY=X",
+        "GBPJPY=X",
+        "EURGBP=X",
+        "EURCAD=X",
+        "EURSEK=X",
+        "EURCHF=X",
+        "EURHUF=X",
+        "EURJPY=X"
     ]
 
     headers = [
@@ -295,7 +317,7 @@ def main():
         "#F0FFFF"   # Azure
     ]
 
-    excel_file = xlsxwriter.Workbook('crypto_current_transaction_history.xlsx')
+    excel_file = xlsxwriter.Workbook('forex_current_transaction_history.xlsx')
 
     time_range_dict = {
         "year": [
@@ -305,41 +327,8 @@ def main():
             # ("01/01/2021", "01/01/2022"),
             # ("01/01/2022", "01/01/2023"),
             # ("01/01/2023", "01/01/2024"),
-            ("01/01/2018", "01/01/2024")
+            ("01/01/2020", "01/07/2023")
         ],
-        # "month":[
-        #     ("01/01/2021", "01/02/2021"),
-        #     ("01/02/2021", "01/03/2021"),
-        #     ("01/03/2021", "01/04/2021"),
-        #     ("01/04/2021", "01/05/2021"),
-        #     ("01/05/2021", "01/06/2021"),
-        #     ("01/06/2021", "01/07/2021"),
-        #     ("01/07/2021", "01/08/2021"),
-        #     ("01/08/2021", "01/09/2021"),
-        #     ("01/09/2021", "01/10/2021"),
-        #     ("01/10/2021", "01/11/2021"),
-        #     ("01/11/2021", "01/12/2021"),
-        #     ("01/12/2021", "01/01/2022"),
-        #     ("01/01/2022", "01/02/2022"),
-        #     ("01/02/2022", "01/03/2022"),
-        #     ("01/03/2022", "01/04/2022"),
-        #     ("01/04/2022", "01/05/2022"),
-        #     ("01/05/2022", "01/06/2022"),
-        #     ("01/06/2022", "01/07/2022"),
-        #     ("01/07/2022", "01/08/2022"),
-        #     ("01/08/2022", "01/09/2022"),
-        #     ("01/09/2022", "01/10/2022"),
-        #     ("01/10/2022", "01/11/2022"),
-        #     ("01/11/2022", "01/12/2022"),
-        #     ("01/12/2022", "01/01/2023"),
-        #     ("01/01/2023", "01/02/2023"),
-        #     ("01/02/2023", "01/03/2023"),
-        #     ("01/03/2023", "01/04/2023"),
-        #     ("01/04/2023", "01/05/2023"),
-        #     ("01/05/2023", "01/06/2023"),
-        #     ("01/06/2023", "01/07/2023"),
-        #     ("01/07/2023", "01/08/2023"),
-        # ],
         # "uptrend": [
         #     ("10/12/2018", "16/09/2019"),
         #     ("16/03/2020", "03/05/2021"),
@@ -382,7 +371,7 @@ def main():
                 row_format = excel_file.add_format({'bg_color': background_colors[color_idx]})
 
                 for time_frame in time_frames:
-                    transaction_history = back_test(crypto_data, time_frame, symbol, time_range[0], time_range[1])
+                    transaction_history = back_test(forex_data, time_frame, symbol, time_range[0], time_range[1])
                     if transaction_history is None:
                         continue
                         
@@ -423,7 +412,7 @@ def main():
     excel_file.close()
 
     # Save all transaction history
-    with open('dataset/crypto_all_transaction_history.json', 'w') as f:
+    with open('dataset/forex_all_transaction_history.json', 'w') as f:
         json.dump(all_transaction_history, f, indent=4)
 
 
