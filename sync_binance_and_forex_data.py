@@ -1,8 +1,8 @@
 from datahub.data_generator.crypto_currency_crawler import BinanceCryptoDataCrawler
 from datahub.data_generator.forex_data_collector import ForexDataCollector
 
-# bcdc = BinanceCryptoDataCrawler()
-# bcdc.load_from_api("dataset/lastest_crypto_price_data.json")
+bcdc = BinanceCryptoDataCrawler()
+bcdc.load_from_api("dataset/lastest_crypto_price_data.json")
 
 fdc = ForexDataCollector()
 fdc.load_from_api("dataset/lastest_forex_price_data.json")

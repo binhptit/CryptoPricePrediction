@@ -3,35 +3,19 @@ from trading.indicators.rsi import RSI
 from datahub.data_generator.forex_data_collector import ForexDataCollector
 from utils.json_handler import dump_json, load_json
 from datetime import datetime
+from trading.indicators.rsi_divergence import RsiDivergence
+import matplotlib.ticker as mticker
 from trading.strategy.profit_loss_management.bull_engulfing_profit_loss import BullEngulfingProfitLoss
 from trading.strategy.profit_loss_management.bear_engulfing_profit_loss import BearEngulfingProfitLoss
+from trading.strategy.profit_loss_management.bear_disvergence_profit_loss import BearDisvergenceProfitLoss
+from trading.strategy.profit_loss_management.bull_disvergence_profit_loss import BullDisvergenceProfitLoss
 from trading.candlestick import CandleStick
 from utils.utility import calculate_profit_and_loss
 import xlsxwriter
 import json
+import mplfinance as mpf
 
-from trading.strategy.candle_pattern import (
-        BearishEngulfing,
-        BullishEngulfing,
-        BearishHarami,
-        BullishHarami,
-        DarkCloudCover,
-        DojiStar,
-        Doji,
-        DragonFlyDoji,
-        EveningStarDoji,
-        EveningStar,
-        GraveStoneDoji,
-        Hammer,
-        HangingMan,
-        InvertedHammer,
-        MorningStar,
-        MorningStarDoji,
-        Piercing,
-        RainDrop,
-        ShootingStar,
-        Star
-)
+from trading.strategy.candle_pattern import *
 import mplfinance as mpl
 import os
 import pandas as pd
@@ -42,71 +26,35 @@ import logging
 # logging to file
 logging.basicConfig(filename='back_test.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
-def plot(candlesticks_df, pattern_indexex, output_path, timeframe='4h'):
-    if timeframe == '1d':
-        width_candle_ohlc = 1.5
-        figsize = (16, 9)
-    elif timeframe == '4h':
-        width_candle_ohlc = 0.1
-        figsize = (16, 9)
-    elif timeframe == '1w':
-        width_candle_ohlc = 8.0
-        figsize = (10, 9)
-    elif timeframe == '1h':
-        width_candle_ohlc = 0.0001
-        figsize = (15, 9)
-
+def plot(candlesticks_df, pattern_indexex, rsi_data, output_path, timeframe='4h'):
     candlesticks_df.index = pd.DatetimeIndex(candlesticks_df['Date'])
-    candlesticks_df['Date'] = candlesticks_df['Date'].apply(mpl_dates.date2num)
+    # candlesticks_df['Date'] = candlesticks_df['Date'].apply(mpl_dates.date2num)
 
-    fig, ax = plt.subplots(figsize=figsize, dpi=300)
-    candlestick_ohlc(ax, candlesticks_df.values,width=width_candle_ohlc, colorup='green', colordown='red', alpha=0.9)
-    date_format = mpl_dates.DateFormatter('%d %b  %Y')
-    ax.xaxis.set_major_formatter(date_format)
-    for level in pattern_indexex:
-        plt.hlines(level[1], xmin=candlesticks_df['Date'][level[0]], xmax=max(candlesticks_df['Date']), colors='blue', linestyle='--')
+    mco = [None] * len(candlesticks_df['Date'])
+    mco[pattern_indexex[0][0]] = 'blue'
 
-    # Save fig
-    plt.savefig(output_path)
-
-    # Release memory
-    plt.close(fig)
-
-def make_plot_from_dataframe(d, save_path, name):
-    save_path += name
-
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
-
-    df = pd.DataFrame(data=d)
-    df.index = pd.DatetimeIndex(df['Date'])
-
-    filename = save_path + "/" + str(d['Date'][0]) + '.png'
-    coin = f"BTC-{name}"
+    ap =[ mpf.make_addplot(candlesticks_df['Close'],panel=1,type='line',ylabel='Line'),
+          mpf.make_addplot(rsi_data['RSI'],panel=2,type='line',ylabel='RSI'),
+    ]
     
-    mpl.plot(
-        df,
-        type="candle", 
-        title = f"{coin} Price",  
-        style="yahoo",
-        savefig=filename
-        )
+    # mpf.plot(candlesticks_df,type='candle',savefig=output_path, style='yahoo', marketcolor_overrides=mco)
+    mpf.plot(candlesticks_df,
+             type='candle',
+             savefig=output_path,
+             style='yahoo',
+             addplot=ap,
+             vlines=dict(vlines=candlesticks_df['Date'][pattern_indexex[0][0]],
+                         linewidths=10,alpha=0.4)
+            )
 
-def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="01/12/2022", backtest_candle=1000):
+def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date="01/12/2022", backtest_candle=1000):
     print(f"Back test for {symbol} on {time_frame} time frame from {start_date} to {end_date}")
     all_candlestick = []
 
     start_date = datetime.strptime(start_date, "%d/%m/%Y")
     end_date = datetime.strptime(end_date, "%d/%m/%Y")
 
-    # if time_frame == '1d':
-    #     backtest_candle = 550
-    # elif time_frame == '4h':
-    #     backtest_candle = 365 * 6
-    # elif time_frame == '1h':
-    #     backtest_candle = 365 * 6 * 2
-
-    for i, candle_info in enumerate(forex_data[symbol][time_frame]['data'][:]):
+    for i, candle_info in enumerate(crypto_data[symbol][time_frame]['data'][:]):
         try:
             candle_date = datetime.fromtimestamp(int(candle_info['open_time']) / 1000)
         except Exception as e:
@@ -119,7 +67,6 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
         candlestick = CandleStick()
         candlestick.load_candle_stick(candle_info)
         
-        
         all_candlestick.append(candlestick)
 
     single_candle_patterns = [
@@ -130,6 +77,10 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
             # Doji,
             DragonFlyDoji,
             GraveStoneDoji,
+            HiddenBearishDivergence,
+            HiddenBullishDivergence,
+            StrongBearishDivergence,
+            StrongBullishDivergence,
     ]
 
     multiple_candle_patterns = [
@@ -147,12 +98,9 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
     ]
 
     rsi = RSI(all_candlestick, None)
-    rsi_values = rsi.run() 
+    rsi_values = rsi.run()
 
-    supply_demand_detector = SupplyDemandPrice(all_candlestick, None)
-    all_pivots = supply_demand_detector.run()
-    supply_demand_detector.plot("images/supply_demand.png")
-
+    
     try:
         idx_pattern = {i: [] for i in range(len(all_candlestick))}
         for pattern in single_candle_patterns:
@@ -174,31 +122,20 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
         for idx in multiple_candle_idx:
             idx_pattern[idx].append(pattern_detection)
 
-    
     transaction_history = {}
     for i in range(len(all_candlestick)):
-        if len(idx_pattern[i]) > 0 or (len(idx_pattern[i]) > 1 \
-            and idx_pattern[i][0].trend == idx_pattern[i][1].trend):
-            # and idx_pattern[i][0].no_candles != idx_pattern[i][1].no_candles \
-            # and idx_pattern[i][0].trend == idx_pattern[i][1].trend \:
-            overlap_area = []
-            for ii, level in all_pivots:
-                upper_bound = level * 1.005
-                lower_bound = level * 0.995
-                
-                last_candle_stick = all_candlestick[i]
-                if (last_candle_stick.low <= upper_bound and last_candle_stick.low >= lower_bound) \
-                or (last_candle_stick.high <= upper_bound and last_candle_stick.high >= lower_bound) \
-                or (last_candle_stick.high >= upper_bound and last_candle_stick.low <= lower_bound):
-                    overlap_area.append(level)
-
-            if overlap_area == []:
-                continue
-
-            padding_right = 15
+        if (len(idx_pattern[i]) == 1) or (len(idx_pattern[i]) > 1 \
+            and idx_pattern[i][0].trend == idx_pattern[i][1].trend)\
+                or any([ "divergence" in pattern.pattern_name for pattern in idx_pattern[i]]):
+            padding_right = 30
             padding_left = 50
             padding_left = i if i < padding_left else padding_left
             padding_right = len(all_candlestick) - i if len(all_candlestick) - i < padding_right else padding_right
+            
+            sub_candlesticks = all_candlestick[max(0, i - padding_left): min(len(all_candlestick), i + padding_right)]
+            rsi_divergence = RsiDivergence(sub_candlesticks)
+            rsi_data = rsi_divergence.rsi_data
+    
             d = {"Date": [],"Open": [], "High": [], "Low":[], "Close": []}
             for ii in range(max(0, i - padding_left), min(len(all_candlestick), i + padding_right), 1):
                 d["Date"].append(all_candlestick[ii].date)
@@ -210,11 +147,16 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
             candle_with_price = []
             candle_with_price.append([padding_left, all_candlestick[i].close])
 
-            save_path = f'images/plot/{symbol}/{start_date}-{end_date}/{time_frame}/'
-            try:
-                overlap_pattern_name = idx_pattern[i][0].pattern_name + "_" + idx_pattern[i][1].pattern_name + "/"
-            except Exception as e:
-                overlap_pattern_name = idx_pattern[i][0].pattern_name + "/"
+            save_path = f'images/plot_forex/{symbol}/{start_date}-{end_date}/{time_frame}/'
+            count_pattern_name = dict()
+            for pattern in idx_pattern[i]:
+                if pattern.pattern_name not in count_pattern_name:
+                    count_pattern_name[pattern.pattern_name] = 0
+                count_pattern_name[pattern.pattern_name] += 1
+            
+            overlap_pattern_name = ""
+            for pattern_name in count_pattern_name:
+                overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
 
             save_path += overlap_pattern_name
 
@@ -222,12 +164,28 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
             
-            if idx_pattern[i][0].trend == 'bearish':
-                bear_engulfing_profit_loss = BearEngulfingProfitLoss(all_candlestick, i)
-                entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
+            pattern_trend = None
+            for pattern in idx_pattern[i]:
+                if "divergence" in pattern.pattern_name:
+                    pattern_trend = pattern.trend
+            
+            if pattern_trend is None:
+                pattern_trend = idx_pattern[i][0].trend
+
+            if "divergence" not in overlap_pattern_name:
+                if pattern_trend == 'bearish':
+                    bear_engulfing_profit_loss = BearEngulfingProfitLoss(all_candlestick, i)
+                    entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
+                else:
+                    bull_engulfing_profit_loss = BullEngulfingProfitLoss(all_candlestick, i)
+                    entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
             else:
-                bull_engulfing_profit_loss = BullEngulfingProfitLoss(all_candlestick, i)
-                entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
+                if pattern_trend == 'bearish':
+                    bear_disvergence_profit_loss = BearDisvergenceProfitLoss(all_candlestick, i)
+                    entry_price, stop_loss_price, take_profit_price = bear_disvergence_profit_loss.run(rr_ratio=1)
+                else:
+                    bull_disvergence_profit_loss = BullDisvergenceProfitLoss(all_candlestick, i)
+                    entry_price, stop_loss_price, take_profit_price = bull_disvergence_profit_loss.run(rr_ratio=1)
 
             if overlap_pattern_name not in transaction_history:
                 transaction_history[overlap_pattern_name] = []
@@ -252,18 +210,18 @@ def back_test(forex_data, time_frame,symbol, start_date="01/01/2022", end_date="
 
             pd_candlesticks = pd.DataFrame(data=d)
             win_or_lose = "win" if profit > 0 else "lose"
-            # plot(pd_candlesticks, candle_with_price, save_path + "/" + win_or_lose + "_" + str(all_candlestick[i].date) + ".png")
-    
-    # Statisic
-    # for pattern_name in transaction_history:
-    #     profit = 0
-    #     for transaction in transaction_history[pattern_name]:
-    #         profit += transaction['profit']
-        
-    #     print(f"/-------------- {pattern_name} ---------------------/")
-    #     print(f"Profit: {profit}. Total transaction: {len(transaction_history[pattern_name])}")
-    #     print(f"Ratio win/loss: {len([transaction for transaction in transaction_history[pattern_name] if transaction['profit'] > 0]) / len(transaction_history[pattern_name])}")
+            plot(pd_candlesticks, candle_with_price, rsi_data, save_path + "/" + win_or_lose + "_" + str(all_candlestick[i].date) + ".png")
 
+    count_total_divergence_transaction = 0
+    count_total_win_divergence_transaction = 0
+    for pattern_name in transaction_history:        
+        if "divergence" in pattern_name:
+            count_total_divergence_transaction += len(transaction_history[pattern_name])
+            count_total_win_divergence_transaction += len([transaction for transaction in transaction_history[pattern_name] if transaction['profit'] > 0])
+
+    print(f"Total divergence transaction: {count_total_divergence_transaction}")
+    print(f"Total win divergence transaction: {count_total_win_divergence_transaction}")
+    print(f"Total win divergence transaction ratio: {count_total_win_divergence_transaction / count_total_divergence_transaction}")
     return transaction_history
 
 def main():
@@ -321,25 +279,8 @@ def main():
 
     time_range_dict = {
         "year": [
-            # ("01/01/2018", "01/01/2019"),
-            # ("01/01/2019", "01/01/2020"),
-            # ("01/01/2020", "01/01/2021"),
-            # ("01/01/2021", "01/01/2022"),
-            # ("01/01/2022", "01/01/2023"),
-            # ("01/01/2023", "01/01/2024"),
-            ("01/01/2020", "01/07/2023")
+            ("01/01/2020", "04/08/2023")
         ],
-        # "uptrend": [
-        #     ("10/12/2018", "16/09/2019"),
-        #     ("16/03/2020", "03/05/2021"),
-        #     ("21/06/2021", "15/11/2021"),
-        #     ("14/11/2022", "01/12/2023")
-        # ],
-        # "downtrend": [
-        #     ("17/06/2019", "16/03/2020"),
-        #     ("15/04/2021", "19/07/2021"),
-        #     ("18/10/2021", "02/01/2023")
-        # ]
     }
 
     all_transaction_history = {}
