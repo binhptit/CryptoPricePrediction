@@ -18,4 +18,8 @@ from .piercing import Piercing
 from .rain_drop import RainDrop
 from .shooting_star import ShootingStar
 from .star import Star
-
+from .hidden_bearish_divergence import HiddenBearishDivergence
+from .hidden_bullish_divergence import HiddenBullishDivergence
+from .strong_bearish_divergence import StrongBearishDivergence
+from .strong_bullish_divergence import StrongBullishDivergence
+from .divergence_base_pattern import RsiDivergence
