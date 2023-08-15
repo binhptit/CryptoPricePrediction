@@ -201,7 +201,7 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
             is_analyze = True
             analyze_and_send_noti(symbol, '30m', data_collector, allow_pattern_dict, telegram_notification)
 
-        if minute_value in [0, 1, 30, 31, 45, 46] and '1h' in time_frames:
+        if minute_value in [0, 1, 45, 46] and '1h' in time_frames:
             # Call analyze and send noti 1h
             is_analyze = True
             analyze_and_send_noti(symbol, '1h', data_collector, allow_pattern_dict, telegram_notification)
