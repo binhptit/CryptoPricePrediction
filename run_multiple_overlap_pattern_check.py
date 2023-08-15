@@ -95,7 +95,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if win_rate < 0.55 or total_trade < 6:
+                    if win_rate < 0.53:
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {

@@ -46,7 +46,6 @@ crypto_time_frames = {
     "4h": 356 * 6,
     "30m": 200,
     "1h": 600,
-    "15m": 600,
 }
 
 forex_time_frames = {
@@ -77,7 +76,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if win_rate < 0.55 or total_trade < 6:
+                    if win_rate < 0.53 or total_trade < 3:
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
