@@ -28,7 +28,7 @@ class BearDisvergenceProfitLoss(BaseProfitLoss):
         dis_retracement = dif_open_close * ratio_retracement_for_entry
 
         entry_price = close_price - dis_retracement
-        stop_loss_price = max_high + ratio_padding_loss * entry_price
+        stop_loss_price = max_high + ratio_padding_loss * dif_open_close
         take_profit_price = entry_price - abs(entry_price - stop_loss_price) * rr_ratio
 
         return entry_price, stop_loss_price, take_profit_price

@@ -45,14 +45,11 @@ single_candle_patterns = [
     ]
 
 multiple_candle_patterns = [
-        MorningStar,
-        MorningStarDoji,
         BullishHarami,
         BearishHarami,
         DarkCloudCover,
         # DojiStar,
         EveningStarDoji,
-        EveningStar,
         ShootingStar,
         # Star,
         HangingMan,

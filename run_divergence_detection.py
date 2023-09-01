@@ -6,6 +6,8 @@ import config
 import json
 from trading.strategy.profit_loss_management.bear_disvergence_profit_loss import BearDisvergenceProfitLoss
 from trading.strategy.profit_loss_management.bull_disvergence_profit_loss import BullDisvergenceProfitLoss
+from trading.strategy.profit_loss_management.bull_engulfing_profit_loss import BullEngulfingProfitLoss
+from trading.strategy.profit_loss_management.bear_engulfing_profit_loss import BearEngulfingProfitLoss
 from trading.strategy.candle_pattern import *
 from datetime import datetime
 import time
@@ -14,44 +16,56 @@ import multiprocessing
 logging.basicConfig(filename='logs/chart_tracking.log', level=logging.INFO)
 
 single_candle_patterns = [
-            BearishEngulfing,
-            BullishEngulfing,
             Hammer,
             InvertedHammer,
             DragonFlyDoji,
             GraveStoneDoji,
-            HiddenBearishDivergence,
-            HiddenBullishDivergence,
-            StrongBearishDivergence,
-            StrongBullishDivergence,
+            BeltHoldBearish,
+            BeltHoldBullish,
+            AnomalyHammer,
+            AnomalyInvertedHammer
     ]
 
 multiple_candle_patterns = [
-        MorningStar,
-        MorningStarDoji,
+        BearishEngulfing,
+        BullishEngulfing,
+        MorningStarDojiNoGap,
+        MorningStarNoGap,
         BullishHarami,
         BearishHarami,
         DarkCloudCover,
-        # DojiStar,
         EveningStarDoji,
-        EveningStar,
+        EveningStarNoGap,
         ShootingStar,
-        # Star,
         HangingMan,
+        MatHold,
+        BreakawayBearish,
+        BreakawayBullish,
+        ThreeBlackSoldiers,
+        ThreeLineStrikeBearish,
+        ThreeLineStrikeBullish,
+        ThreeOutsideUp,
+        ThreeStarsInTheSouth,
+        ThreeWhiteSoldiers,
+        StrongBearishDivergence,
+        StrongBullishDivergence,
+        HiddenBearishDivergence,
+        HiddenBullishDivergence
     ]
 
 crypto_time_frames = {
     "1w": 88,
     "1d": 356,
     "4h": 356 * 6,
-    "30m": 200,
     "1h": 600,
 }
 
 forex_time_frames = {
-    "30m": 200,
+    # "30m": 200,
     "1h": 600,
+    "4h": 356,
     "1d": 365,
+    "1w": 365
 }
 
 def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_transaction_history.json', symbols=[]):
@@ -76,7 +90,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if win_rate < 0.53 or total_trade < 3:
+                    if not ((win_rate > 0.5) or ("ivergence" in pattern)):
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
@@ -124,49 +138,56 @@ def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict
         pattern_detection = pattern(candlesticks)
         multiple_candle_idx = pattern_detection.run()
         for idx in multiple_candle_idx:
-            idx_pattern[idx].append(pattern_detection)
-
-    last_candle_idx = len(candlesticks) - 2
-    # Check if last candlestick is in pattern
-    overlap_pattern_name = None
-    if any([ "divergence" in pattern.pattern_name for pattern in idx_pattern[last_candle_idx]]):
-        count_pattern_name = dict()
-        for pattern in idx_pattern[last_candle_idx]:
-            if pattern.pattern_name not in count_pattern_name:
-                count_pattern_name[pattern.pattern_name] = 0
-            count_pattern_name[pattern.pattern_name] += 1
-
-        overlap_pattern_name = ""
-        for pattern_name in count_pattern_name:
-            overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
-
-            
-        if time_frame not in allow_pattern_dict[symbol] or overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
-            overlap_pattern_name = None
-        else:
-            pattern_statistic = allow_pattern_dict[symbol][time_frame][overlap_pattern_name]                        
-
-            pattern_trend = None
-            for pattern in idx_pattern[last_candle_idx]:
-                if "divergence" in pattern.pattern_name:
-                    pattern_trend = pattern.trend
-            
-            if pattern_trend is None:
-                pattern_trend = idx_pattern[last_candle_idx][0].trend
-
-            if "divergence" not in overlap_pattern_name:
-                pass
+            if "ivergence" in pattern_detection.pattern_name:
+                idx_pattern[idx+1].append(pattern_detection)
             else:
-                if pattern_trend == 'bearish':
-                    bear_disvergence_profit_loss = BearDisvergenceProfitLoss(candlesticks, last_candle_idx)
-                    entry_price, stop_loss_price, take_profit_price = bear_disvergence_profit_loss.run(rr_ratio=1)
-                else:
-                    bull_disvergence_profit_loss = BullDisvergenceProfitLoss(candlesticks, last_candle_idx)
-                    entry_price, stop_loss_price, take_profit_price = bull_disvergence_profit_loss.run(rr_ratio=1)
-         
-            how_much_money_lose_in_failure_case = 5.0
-            change_ratio = abs(entry_price - stop_loss_price) / entry_price
-            total_usdt = int(how_much_money_lose_in_failure_case / change_ratio)
+                idx_pattern[idx].append(pattern_detection)
+
+    last_candle_idx = len(candlesticks) - 1
+    # Check if last candlestick is in pattern
+    if len(idx_pattern[last_candle_idx]) > 1 and \
+        any(idx_pattern[last_candle_idx][ii].trend != idx_pattern[last_candle_idx][jj].trend 
+            for ii in range(len(idx_pattern[last_candle_idx]))
+            for jj in range(ii + 1, len(idx_pattern[last_candle_idx]))):
+        return
+        
+    if len(idx_pattern[last_candle_idx]) == 0:
+        return
+    
+    count_pattern_name = dict()
+    for pattern in idx_pattern[last_candle_idx]:
+        if pattern.pattern_name not in count_pattern_name:
+            count_pattern_name[pattern.pattern_name] = 0
+        count_pattern_name[pattern.pattern_name] += 1
+
+    overlap_pattern_name = ""
+    for pattern_name in count_pattern_name:
+        overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
+
+    if time_frame not in allow_pattern_dict[symbol] or overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
+        overlap_pattern_name = None
+    else:
+        pattern_statistic = allow_pattern_dict[symbol][time_frame][overlap_pattern_name]                        
+        pattern_trend = idx_pattern[last_candle_idx][0].trend
+
+        if "divergence" not in overlap_pattern_name:
+            if pattern_trend == 'bearish':
+                bear_engulfing_profit_loss = BearEngulfingProfitLoss(candlesticks, i)
+                entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
+            else:
+                bull_engulfing_profit_loss = BullEngulfingProfitLoss(candlesticks, i)
+                entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
+        else:
+            if pattern_trend == 'bearish':
+                bear_disvergence_profit_loss = BearDisvergenceProfitLoss(candlesticks, last_candle_idx)
+                entry_price, stop_loss_price, take_profit_price = bear_disvergence_profit_loss.run(rr_ratio=1)
+            else:
+                bull_disvergence_profit_loss = BullDisvergenceProfitLoss(candlesticks, last_candle_idx)
+                entry_price, stop_loss_price, take_profit_price = bull_disvergence_profit_loss.run(rr_ratio=1)
+        
+        how_much_money_lose_in_failure_case = 5.0
+        change_ratio = abs(entry_price - stop_loss_price) / entry_price
+        total_usdt = int(how_much_money_lose_in_failure_case / change_ratio)
 
     if overlap_pattern_name is not None:
         long_or_short = "LONG" if idx_pattern[last_candle_idx][0].trend == "bullish" else "SHORT"
@@ -190,33 +211,36 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
         minute_value = current_time.minute
         hour_value = current_time.hour
 
+        # change hour value to Utc+7
+        hour_value = (hour_value + 7) % 24
+
         # Reset minute and hour value for test
         # minute_value = 0
         # hour_value = 0
 
         is_analyze = False
                 
-        if minute_value in [0, 1, 15, 16, 28, 29, 30, 31, 45, 46] and '30m' in time_frames:
-            # Call analyze and send noti 30m
-            is_analyze = True
-            analyze_and_send_noti(symbol, '30m', data_collector, allow_pattern_dict, telegram_notification)
+        # if minute_value in [28, 29, 58, 59] and '30m' in time_frames:
+        #     # Call analyze and send noti 30m
+        #     is_analyze = True
+        #     analyze_and_send_noti(symbol, '30m', data_collector, allow_pattern_dict, telegram_notification)
 
-        if minute_value in [0, 1, 45, 46] and '1h' in time_frames:
+        if minute_value in [50, 51] and '1h' in time_frames:
             # Call analyze and send noti 1h
             is_analyze = True
             analyze_and_send_noti(symbol, '1h', data_collector, allow_pattern_dict, telegram_notification)
         
-        if hour_value in [0, 3, 4, 7, 8, 11, 12, 15, 16, 19, 20] and minute_value in [0, 1] and '4h' in time_frames:
+        if hour_value in [2, 6, 10, 14, 18, 22]  and minute_value in [53, 54] and '4h' in time_frames:
             # Call analyze and send noti 4h
             is_analyze = True
             analyze_and_send_noti(symbol, '4h', data_collector, allow_pattern_dict, telegram_notification)
         
-        if hour_value in [0, 16, 20] and minute_value in [0, 1] and '1d' in time_frames:
+        if hour_value in [6] and minute_value in [56, 57] and '1d' in time_frames:
             # Call analyze and send noti 1d
             is_analyze = True
             analyze_and_send_noti(symbol, '1d', data_collector, allow_pattern_dict, telegram_notification)
 
-        if hour_value == 0 and current_time.weekday() == 0 and minute_value in [0, 1] and '1w' in time_frames:
+        if hour_value in [6] and current_time.weekday() == 0 and minute_value in [57, 58] and '1w' in time_frames:
             # Call analyze and send noti 1w
             is_analyze = True
             analyze_and_send_noti(symbol, '1w', data_collector, allow_pattern_dict, telegram_notification)
@@ -230,7 +254,7 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
         time.sleep(60*sleep_minute)
 
 def main():
-    binance_data_collector = BinanceCryptoDataCrawler(config.binance_api, config.binance_secret)
+    binance_data_collector = BinanceCryptoDataCrawler()
     forex_data_collector = ForexDataCollector()
 
     crypto_symbols = [
