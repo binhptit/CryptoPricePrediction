@@ -70,37 +70,46 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
         all_candlestick.append(candlestick)
 
     single_candle_patterns = [
-            BearishEngulfing,
-            BullishEngulfing,
             Hammer,
             InvertedHammer,
-            # Doji,
             DragonFlyDoji,
             GraveStoneDoji,
-            HiddenBearishDivergence,
-            HiddenBullishDivergence,
-            StrongBearishDivergence,
-            StrongBullishDivergence,
+            BeltHoldBearish,
+            BeltHoldBullish,
+            AnomalyHammer,
+            AnomalyInvertedHammer
     ]
 
     multiple_candle_patterns = [
-        MorningStar,
-        MorningStarDoji,
+        BearishEngulfing,
+        BullishEngulfing,
+        MorningStarDojiNoGap,
+        MorningStarNoGap,
         BullishHarami,
         BearishHarami,
         DarkCloudCover,
-        # DojiStar,
         EveningStarDoji,
-        EveningStar,
+        EveningStarNoGap,
         ShootingStar,
-        # Star,
         HangingMan,
+        MatHold,
+        BreakawayBearish,
+        BreakawayBullish,
+        ThreeBlackSoldiers,
+        ThreeLineStrikeBearish,
+        ThreeLineStrikeBullish,
+        ThreeOutsideUp,
+        ThreeStarsInTheSouth,
+        ThreeWhiteSoldiers,
+        StrongBearishDivergence,
+        StrongBullishDivergence,
+        HiddenBearishDivergence,
+        HiddenBullishDivergence
     ]
 
     rsi = RSI(all_candlestick, None)
     rsi_values = rsi.run()
 
-    
     try:
         idx_pattern = {i: [] for i in range(len(all_candlestick))}
         for pattern in single_candle_patterns:
@@ -119,98 +128,107 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
             multiple_candle_idx = pattern_detection.run()
         except Exception as e:
             continue
+
         for idx in multiple_candle_idx:
-            idx_pattern[idx].append(pattern_detection)
+            if "ivergence" in pattern_detection.pattern_name:
+                idx_pattern[idx+1].append(pattern_detection)
+            else:
+                idx_pattern[idx].append(pattern_detection)
 
     transaction_history = {}
     for i in range(len(all_candlestick)):
-        if (len(idx_pattern[i]) == 1) or (len(idx_pattern[i]) > 1 \
-            and idx_pattern[i][0].trend == idx_pattern[i][1].trend)\
-                or any([ "divergence" in pattern.pattern_name for pattern in idx_pattern[i]]):
-            padding_right = 30
-            padding_left = 50
-            padding_left = i if i < padding_left else padding_left
-            padding_right = len(all_candlestick) - i if len(all_candlestick) - i < padding_right else padding_right
-            
-            sub_candlesticks = all_candlestick[max(0, i - padding_left): min(len(all_candlestick), i + padding_right)]
-            rsi_divergence = RsiDivergence(sub_candlesticks)
-            rsi_data = rsi_divergence.rsi_data
+        if len(idx_pattern[i]) > 1 and \
+        any(idx_pattern[i][ii].trend != idx_pattern[i][jj].trend 
+            for ii in range(len(idx_pattern[i]))
+            for jj in range(ii + 1, len(idx_pattern[i]))):
+            continue
     
-            d = {"Date": [],"Open": [], "High": [], "Low":[], "Close": []}
-            for ii in range(max(0, i - padding_left), min(len(all_candlestick), i + padding_right), 1):
-                d["Date"].append(all_candlestick[ii].date)
-                d["Open"].append(all_candlestick[ii].open)
-                d["High"].append(all_candlestick[ii].high)
-                d["Low"].append(all_candlestick[ii].low)
-                d["Close"].append(all_candlestick[ii].close)
+        if len(idx_pattern[i]) == 0:
+            continue
+        padding_right = 30
+        padding_left = 35
+        padding_left = i if i < padding_left else padding_left
+        padding_right = len(all_candlestick) - i if len(all_candlestick) - i < padding_right else padding_right
+        
+        sub_candlesticks = all_candlestick[max(0, i - padding_left): min(len(all_candlestick), i + padding_right)]
+        rsi_divergence = RsiDivergence(sub_candlesticks)
+        rsi_data = rsi_divergence.rsi_data
 
-            candle_with_price = []
-            candle_with_price.append([padding_left, all_candlestick[i].close])
+        d = {"Date": [],"Open": [], "High": [], "Low":[], "Close": []}
+        for ii in range(max(0, i - padding_left), min(len(all_candlestick), i + padding_right), 1):
+            d["Date"].append(all_candlestick[ii].date)
+            d["Open"].append(all_candlestick[ii].open)
+            d["High"].append(all_candlestick[ii].high)
+            d["Low"].append(all_candlestick[ii].low)
+            d["Close"].append(all_candlestick[ii].close)
 
-            save_path = f'images/plot_forex/{symbol}/{start_date}-{end_date}/{time_frame}/'
-            count_pattern_name = dict()
-            for pattern in idx_pattern[i]:
-                if pattern.pattern_name not in count_pattern_name:
-                    count_pattern_name[pattern.pattern_name] = 0
-                count_pattern_name[pattern.pattern_name] += 1
-            
-            overlap_pattern_name = ""
-            for pattern_name in count_pattern_name:
-                overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
+        candle_with_price = []
+        candle_with_price.append([padding_left, all_candlestick[i].close])
 
-            save_path += overlap_pattern_name
+        save_path = f'images/plot_forex/{symbol}/{start_date}-{end_date}/{time_frame}/'
+        count_pattern_name = dict()
+        for pattern in idx_pattern[i]:
+            if pattern.pattern_name not in count_pattern_name:
+                count_pattern_name[pattern.pattern_name] = 0
+            count_pattern_name[pattern.pattern_name] += 1
+        
+        overlap_pattern_name = ""
+        for pattern_name in count_pattern_name:
+            overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
 
-            # Make multiple directory if not exist
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            
-            pattern_trend = None
-            for pattern in idx_pattern[i]:
-                if "divergence" in pattern.pattern_name:
-                    pattern_trend = pattern.trend
-            
-            if pattern_trend is None:
-                pattern_trend = idx_pattern[i][0].trend
+        save_path += overlap_pattern_name
 
-            if "divergence" not in overlap_pattern_name:
-                if pattern_trend == 'bearish':
-                    bear_engulfing_profit_loss = BearEngulfingProfitLoss(all_candlestick, i)
-                    entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
-                else:
-                    bull_engulfing_profit_loss = BullEngulfingProfitLoss(all_candlestick, i)
-                    entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
+        # Make multiple directory if not exist
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        
+        pattern_trend = None
+        for pattern in idx_pattern[i]:
+            if "divergence" in pattern.pattern_name:
+                pattern_trend = pattern.trend
+        
+        if pattern_trend is None:
+            pattern_trend = idx_pattern[i][0].trend
+
+        if "divergence" not in overlap_pattern_name:
+            if pattern_trend == 'bearish':
+                bear_engulfing_profit_loss = BearEngulfingProfitLoss(all_candlestick, i)
+                entry_price, stop_loss_price, take_profit_price = bear_engulfing_profit_loss.run(rr_ratio=1)
             else:
-                if pattern_trend == 'bearish':
-                    bear_disvergence_profit_loss = BearDisvergenceProfitLoss(all_candlestick, i)
-                    entry_price, stop_loss_price, take_profit_price = bear_disvergence_profit_loss.run(rr_ratio=1)
-                else:
-                    bull_disvergence_profit_loss = BullDisvergenceProfitLoss(all_candlestick, i)
-                    entry_price, stop_loss_price, take_profit_price = bull_disvergence_profit_loss.run(rr_ratio=1)
+                bull_engulfing_profit_loss = BullEngulfingProfitLoss(all_candlestick, i)
+                entry_price, stop_loss_price, take_profit_price = bull_engulfing_profit_loss.run(rr_ratio=1)
+        else:
+            if pattern_trend == 'bearish':
+                bear_disvergence_profit_loss = BearDisvergenceProfitLoss(all_candlestick, i)
+                entry_price, stop_loss_price, take_profit_price = bear_disvergence_profit_loss.run(rr_ratio=1)
+            else:
+                bull_disvergence_profit_loss = BullDisvergenceProfitLoss(all_candlestick, i)
+                entry_price, stop_loss_price, take_profit_price = bull_disvergence_profit_loss.run(rr_ratio=1)
 
-            if overlap_pattern_name not in transaction_history:
-                transaction_history[overlap_pattern_name] = []
-            
-            profit = calculate_profit_and_loss(entry_price, take_profit_price, stop_loss_price, all_candlestick[i + 1:])
+        if overlap_pattern_name not in transaction_history:
+            transaction_history[overlap_pattern_name] = []
+        
+        profit = calculate_profit_and_loss(entry_price, take_profit_price, stop_loss_price, all_candlestick[i + 1:])
 
-            transaction_history[overlap_pattern_name].append(
-                {
-                "pattern_name": overlap_pattern_name,
-                "date": str(all_candlestick[i].date),
-                "time_frame": time_frame,
-                "symbol": symbol,
-                "long_or_short": "short" if idx_pattern[i][0].trend == 'bearish' else "long",
-                "profit": profit,
-                "entry_price": entry_price,
-                "take_profit_price": take_profit_price,
-                "stop_loss_price": stop_loss_price,
-                "win_or_lose": "win" if profit > 0 else "lose",
-                "rsi": rsi_values[i]
-                }
-            )
+        transaction_history[overlap_pattern_name].append(
+            {
+            "pattern_name": overlap_pattern_name,
+            "date": str(all_candlestick[i].date),
+            "time_frame": time_frame,
+            "symbol": symbol,
+            "long_or_short": "short" if idx_pattern[i][0].trend == 'bearish' else "long",
+            "profit": profit,
+            "entry_price": entry_price,
+            "take_profit_price": take_profit_price,
+            "stop_loss_price": stop_loss_price,
+            "win_or_lose": "win" if profit > 0 else "lose",
+            "rsi": rsi_values[i]
+            }
+        )
 
-            pd_candlesticks = pd.DataFrame(data=d)
-            win_or_lose = "win" if profit > 0 else "lose"
-            plot(pd_candlesticks, candle_with_price, rsi_data, save_path + "/" + win_or_lose + "_" + str(all_candlestick[i].date) + ".png")
+        pd_candlesticks = pd.DataFrame(data=d)
+        win_or_lose = "win" if profit > 0 else "lose"
+        # plot(pd_candlesticks, candle_with_price, rsi_data, save_path + "/" + win_or_lose + "_" + str(all_candlestick[i].date) + ".png")
 
     count_total_divergence_transaction = 0
     count_total_win_divergence_transaction = 0
@@ -226,26 +244,33 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
 
 def main():
     forex_data_crawler = ForexDataCollector()
-    forex_data = forex_data_crawler.load_from_file(r'dataset/lastest_forex_price_data.json')
+    forex_data = forex_data_crawler.load_from_file(r'dataset/csv_forex_price_data.json')
 
     time_frames = [
-        '30m','1h', '1d'
+        '1h', '4h', '1d', '1w'
     ]
 
     symbols = [
-        "GC=F",
-        "EURUSD=X",
-        "JPY=X",
-        "GBPUSD=X",
-        "AUDUSD=X",
-        "EURJPY=X",
-        "GBPJPY=X",
-        "EURGBP=X",
-        "EURCAD=X",
-        "EURSEK=X",
-        "EURCHF=X",
-        "EURHUF=X",
-        "EURJPY=X"
+        "XAU/USD",
+        "XAG/USD",
+        "USD/JPY",
+        "USD/CHF",
+        "EUR/USD",
+        "AUD/USD",
+        "USD/CAD",
+        "GBP/USD",
+        # "EURUSD=X",
+        # "JPY=X",
+        # "GBPUSD=X",
+        # "AUDUSD=X",
+        # "EURJPY=X",
+        # "GBPJPY=X",
+        # "EURGBP=X",
+        # "EURCAD=X",
+        # "EURSEK=X",
+        # "EURCHF=X",
+        # "EURHUF=X",
+        # "EURJPY=X"
     ]
 
     headers = [
@@ -279,7 +304,7 @@ def main():
 
     time_range_dict = {
         "year": [
-            ("01/01/2020", "04/08/2023")
+            ("01/01/2000", "01/01/2024")
         ],
     }
 
@@ -353,8 +378,8 @@ def main():
     excel_file.close()
 
     # Save all transaction history
-    with open('dataset/forex_all_transaction_history.json', 'w') as f:
-        json.dump(all_transaction_history, f, indent=4)
+    # with open('dataset/forex_all_transaction_history.json', 'w') as f:
+    #     json.dump(all_transaction_history, f, indent=4)
 
 
 if __name__ == "__main__":
