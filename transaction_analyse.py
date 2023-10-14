@@ -14,7 +14,7 @@ def main():
         'LTCUSDT', 'AVAXUSDT', 'UNIUSDT'
     ]
 
-    symbols = ['UNIUSDT']
+    symbols = ['ADAUSDT']
 
     pattern_statistics = {}
 

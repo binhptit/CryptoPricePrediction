@@ -13,7 +13,8 @@ from datetime import datetime
 import time
 import logging
 import multiprocessing
-logging.basicConfig(filename='logs/chart_tracking.log', level=logging.INFO)
+import pytz
+logging.basicConfig(filename='logs/crypto_chart_tracking.log', level=logging.INFO)
 
 single_candle_patterns = [
             Hammer,
@@ -90,7 +91,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if not ((win_rate > 0.5) or ("ivergence" in pattern)):
+                    if not ((win_rate > 0.5) or ("ivergence" in pattern and win_rate > 0.3)):
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
@@ -204,108 +205,82 @@ def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict
         logging.info(full_message)
         logging.info("=> Send notification successfully")
 
-def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notification):    
+def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notification):
+    last_hour_1h_process = -1
+    last_hour_4h_process = -1
+    last_day_process = -1
+    last_day_week_process = -1
+
     while True:
-        # Get the current time
-        current_time = datetime.now()                
+        # Get the current time of timezone UTC+7
+        target_timezone = pytz.timezone('Asia/Bangkok')
+        current_time = datetime.now(target_timezone)
+
         minute_value = current_time.minute
         hour_value = current_time.hour
 
         # change hour value to Utc+7
-        hour_value = (hour_value + 7) % 24
+        # hour_value = (hour_value + 7) % 24
 
         # Reset minute and hour value for test
         # minute_value = 0
         # hour_value = 0
-
         is_analyze = False
-                
-        # if minute_value in [28, 29, 58, 59] and '30m' in time_frames:
-        #     # Call analyze and send noti 30m
-        #     is_analyze = True
-        #     analyze_and_send_noti(symbol, '30m', data_collector, allow_pattern_dict, telegram_notification)
-
-        if minute_value in [50, 51] and '1h' in time_frames:
+        
+        if minute_value in [i for i in range(45, 51, 1)] and '1h' in time_frames and current_time.hour != last_hour_1h_process:
             # Call analyze and send noti 1h
+            logging.info(f"Start tracking chart for {symbol} with timeframes 1h")
             is_analyze = True
             analyze_and_send_noti(symbol, '1h', data_collector, allow_pattern_dict, telegram_notification)
-        
-        if hour_value in [2, 6, 10, 14, 18, 22]  and minute_value in [53, 54] and '4h' in time_frames:
+            last_hour_1h_process = current_time.hour
+
+        if hour_value in [2, 6, 10, 14, 18, 22]  and minute_value in [i for i in range(45, 51, 1)] and '4h' in time_frames \
+            and current_time.hour != last_hour_4h_process:
             # Call analyze and send noti 4h
             is_analyze = True
             analyze_and_send_noti(symbol, '4h', data_collector, allow_pattern_dict, telegram_notification)
-        
-        if hour_value in [6] and minute_value in [56, 57] and '1d' in time_frames:
+            last_hour_4h_process = current_time.hour
+
+        if hour_value in [6] and minute_value in [i for i in range(45, 51, 1)] and '1d' in time_frames and current_time.day != last_day_process:
             # Call analyze and send noti 1d
             is_analyze = True
             analyze_and_send_noti(symbol, '1d', data_collector, allow_pattern_dict, telegram_notification)
-
-        if hour_value in [6] and current_time.weekday() == 0 and minute_value in [57, 58] and '1w' in time_frames:
+            last_day_process = current_time.day
+            
+        if hour_value in [6] and current_time.weekday() == 0 and minute_value in [i for i in range(45, 51, 1)] and '1w' in time_frames and current_time.day != last_day_week_process:
             # Call analyze and send noti 1w
             is_analyze = True
             analyze_and_send_noti(symbol, '1w', data_collector, allow_pattern_dict, telegram_notification)
+            last_day_week_process = current_time.day
 
         sleep_minute = 1
         if is_analyze:
             sleep_minute = 2
 
         # Sleep for 1 minutes
-        logging.info(f"Sleep for {sleep_minute} minutes")
         time.sleep(60*sleep_minute)
 
 def main():
     binance_data_collector = BinanceCryptoDataCrawler()
-    forex_data_collector = ForexDataCollector()
 
     crypto_symbols = [
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
-        'SOLUSDT', 'DOTUSDT', 'BCHUSDT', 
-        'LTCUSDT', 'XRPUSDT', 'AVAXUSDT'
-    ]
-
-    crypto_symbols = [
-        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT',
-        'BCHUSDT', 'LTCUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT', 'ALGOUSDT',
-        'MATICUSDT', 'LINKUSDT', 'XLMUSDT', 'CAKEUSDT', 'UNIUSDT', 'ATOMUSDT',
-        'FILUSDT', 'VETUSDT', 'TRXUSDT', 'XTZUSDT', 'XMRUSDT', 
-        'EOSUSDT', 'THETAUSDT', 'ETCUSDT', 'NEOUSDT', 'AAVEUSDT', 
-        'XEMUSDT', 'KSMUSDT',
+        'SOLUSDT', 'BCHUSDT', 'ATOMUSDT', 
+        'LTCUSDT', 'AVAXUSDT', 'UNIUSDT'
     ]
     
     # Timeframe and limit
-
-    forex_symbols = [
-        "GC=F",
-        "EURUSD=X",
-        "JPY=X",
-        "GBPUSD=X",
-        "AUDUSD=X",
-        "GBPJPY=X",
-        "EURGBP=X",
-        "EURCAD=X",
-        "EURSEK=X",
-        "EURJPY=X"
-    ]
-    telegram_notification = TelegramNotification(False)
+    telegram_notification = TelegramNotification(True)
 
     processes = []
     allow_pattern_dict = get_allow_pattern_dict(symbols=crypto_symbols)
-    logging.info(f"[Crypto] Load allow attern dict: {allow_pattern_dict} successfully")
+    logging.info(f"[Crypto] Load allow attern dict for crypto successfully")
 
     for symbol in crypto_symbols:
         process = multiprocessing.Process(target=task, args=(symbol, crypto_time_frames, binance_data_collector, allow_pattern_dict, telegram_notification))
         process.start()
         processes.append(process)
     
-    forex_allow_pattern_dict = get_allow_pattern_dict(transaction_history_file="dataset/forex_all_transaction_history.json",symbols=forex_symbols)
-    logging.info(f"[Forex] Load allow pattern dict: {forex_allow_pattern_dict} successfully")
-
-    for symbol in forex_symbols:
-        process = multiprocessing.Process(target=task, args=(symbol, forex_time_frames, forex_data_collector, forex_allow_pattern_dict, telegram_notification))
-        process.start()
-        processes.append(process)
-
-    # Wait for all processes to complete
     for process in processes:
         process.join()
 

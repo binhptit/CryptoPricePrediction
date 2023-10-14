@@ -42,6 +42,7 @@ class ForexDataCollector(BaseGenerator):
         self.td_symbols = config.td_symbols
 
         self.endpoint_cor = "twelevedata"
+        self.td_api_key_index = 0
 
     def adding_data(self, data, symbol, interval):
         if interval == "1day":
@@ -175,7 +176,8 @@ class ForexDataCollector(BaseGenerator):
 
         elif self.endpoint_cor == "twelevedata":
             print(f"Start collecting forex data from {self.endpoint_cor}..")
-            td = TDClient(apikey=config.api_key_list[0])
+            td = TDClient(apikey=config.api_key_list[self.td_api_key_index])
+            self.td_api_key_index = (self.td_api_key_index + 1) % len(config.api_key_list)
 
             for symbol in self.td_symbols:
                 self.forex_data[symbol] = {}
@@ -278,11 +280,13 @@ class ForexDataCollector(BaseGenerator):
         interval_td = "1week" if interval == "1w" else interval_td
 
         if self.endpoint_cor == "twelevedata":
-            td = TDClient(apikey=config.api_key_list[0])
+            td = TDClient(apikey=config.api_key_list[self.td_api_key_index])
+            self.td_api_key_index = (self.td_api_key_index + 1) % len(config.api_key_list)
+
             ts = td.time_series(
                 symbol=symbol,
                 interval=interval_td,
-                outputsize=50,
+                outputsize=k,
                 timezone="UTC",
                 order="asc"
             )
