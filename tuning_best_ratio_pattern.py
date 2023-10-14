@@ -77,9 +77,8 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
         for r_shadow_average_lower_shadow in [0.75, 1.0, 1.25, 1.5, 1.75]:
             for r_body_average in [0.5, 0.75, 1.0, 1.25, 1.45, 1.55, 1.65, 1.75]:
                 idx_pattern = {i: [] for i in range(len(all_candlestick))}
-                pattern_detection = AnomalyInvertedHammer(all_candlestick, r_shadow_with_body, r_shadow_average_lower_shadow, r_body_average)
+                pattern_detection = AnomalyHammer(all_candlestick, r_shadow_with_body, r_shadow_average_lower_shadow, r_body_average)
                 single_candle_idx = pattern_detection.run()
-                print(f"Found {len(single_candle_idx)} pattern")
                 for idx in single_candle_idx:
                     idx_pattern[idx].append(pattern_detection)
     
@@ -149,7 +148,7 @@ def back_test(crypto_data, time_frame,symbol, start_date="01/01/2022", end_date=
                         )
 
                 for back_test_pattern_name in [
-                    "AnomalyInvertedHammer"
+                    "AnomalyHammer"
                     ]:
                     count_total_transaction = 0
                     count_total_win_transaction = 0
@@ -224,9 +223,9 @@ def main():
     ]
 
     symbols = [
-        'BTCUSDT', 
+        # 'BTCUSDT', 
         # 'ETHUSDT', 
-        # 'BNBUSDT', 
+        'BNBUSDT', 
         # 'ADAUSDT', 
         # 'SOLUSDT', 
         # 'DOTUSDT', 

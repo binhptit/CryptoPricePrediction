@@ -249,16 +249,20 @@ def main():
 
     time_frames = [
         #  '15m', '30m',
-        '1h', 
-        '4h', '1d', 
+        # '1h', 
+        '4h', 
+        '1d', 
         '1w'
     ]
     symbols = [
-        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
-        'SOLUSDT', 'BCHUSDT', 'ATOMUSDT', 
-        'LTCUSDT', 'AVAXUSDT', 'UNIUSDT'
+        'BTCUSDT', 'ETHUSDT', 
+        'BNBUSDT', 'ADAUSDT', 
+        'SOLUSDT', 'BCHUSDT', 
+        'LTCUSDT', 'AVAXUSDT', 
+        'ATOMUSDT', 'UNIUSDT'
     ]
 
+    # symbols = ['ADAUSDT']
     headers = [
         "Pattern Name",
         "Date",
@@ -286,16 +290,10 @@ def main():
         "#F0FFFF"   # Azure
     ]
 
-    excel_file = xlsxwriter.Workbook('crypto_current_transaction_history_20182024.xlsx')
+    excel_file = xlsxwriter.Workbook('crypto_current_transaction_history_temp.xlsx')
 
     time_range_dict = {
         "year": [
-            # ("01/01/2018", "01/01/2019"),
-            # ("01/01/2019", "01/01/2020"),
-            # ("01/01/2020", "01/01/2021"),
-            # ("01/01/2021", "01/01/2022"),
-            # ("01/01/2022", "01/01/2023"),
-            # ("01/01/2023", "01/01/2024"),
             ("01/01/2018", "01/01/2024")
         ]
     }

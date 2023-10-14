@@ -44,6 +44,9 @@ def main():
             # Sort by win rate
             pattern_statistics[pattern][tf] = dict(sorted(pattern_statistics[pattern][tf].items(), key=lambda item: item[1]['win_rate'], reverse=True))
 
+        if not "strong_bull" in pattern:
+            continue
+        
         # Print result
         print("Pattern: ", pattern)
         for tf in time_frame:

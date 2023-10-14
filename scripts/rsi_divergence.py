@@ -179,7 +179,7 @@ def get_yahoo_finance_data(ticker):
 
     return data
 
-def btc_data():
+def forex_data():
     from trading.candlechart import CandleChart
     symbol = "XAU/USD"
     time_frame = '1h'
@@ -213,9 +213,40 @@ def btc_data():
     candle_chart.candlesticks_df.index = pd.DatetimeIndex(candle_chart.candlesticks_df['Date'])
     return candle_chart.candlesticks_df   
 
+def crypto_data():
+    from trading.candlechart import CandleChart
+    symbol = "ADAUSDT"
+    time_frame = '4h'
+
+    start_date = datetime.strptime("15/08/2023", "%d/%m/%Y")
+    end_date = datetime.strptime("03/09/2023", "%d/%m/%Y")
+
+    binance_crypto_data_crawler = BinanceCryptoDataCrawler()
+    candlesticks_data = binance_crypto_data_crawler.load_from_file(r'dataset/lastest_crypto_price_data.json')
+
+    all_candlestick = []
+    for i, candle_info in enumerate(candlesticks_data[symbol][time_frame]['data'][:]):
+        try:
+            candle_date = datetime.fromtimestamp(int(candle_info['open_time']) / 1000)
+        except Exception as e:
+            candle_date = datetime.fromtimestamp(int(candle_info[0]) / 1000)
+        
+        # Check if candlestick is in date range
+        if candle_date < start_date or candle_date > end_date:
+            continue
+
+        candlestick = CandleStick()
+        candlestick.load_candle_stick(candle_info)
+    
+        all_candlestick.append(candlestick)
+    print(len(all_candlestick))
+    candle_chart = CandleChart(all_candlestick, None)
+    candle_chart.candlesticks_df.index = pd.DatetimeIndex(candle_chart.candlesticks_df['Date'])
+    return candle_chart.candlesticks_df   
+
 ticker = 'XOM'
 # data = get_yahoo_finance_data(ticker)
-data = btc_data()
+data = crypto_data()
 from matplotlib.lines import Line2D # For legend
 price = data['Close'].values
 print(price)
