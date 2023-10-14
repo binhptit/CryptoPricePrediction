@@ -182,3 +182,5 @@ env/*
 config.py
 *.xlsx
 demo/*
+
+binance_key

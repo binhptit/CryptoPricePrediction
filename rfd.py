@@ -83,7 +83,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if not ((win_rate >= 0.5) or ("ivergence" in pattern and win_rate > 0.3)):
+                    if not ((win_rate >= 0.6) or ("strong_bearish_divergence" in pattern)):
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
@@ -96,8 +96,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
     return allow_pattern
     
 def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict, telegram_notification):
-    logging.info(f"Start tracking chart for {symbol} with timeframes {time_frame}")
-
+    # logging.info(f"Start tracking chart for {symbol} with timeframes {time_frame}")
     current_time = datetime.now()
     dt_string = current_time.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -106,6 +105,7 @@ def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict
 
     message = ""
     message += f"-------------x-\nTimeframe: {time_frame}||{symbol}\n"
+    logging.info(f"[{symbol}_{time_frame}] Start get data...")
     candles_data = data_collector.get_lastest_k_candles(symbol, time_frame, 88)
 
     logging.info(f"[{symbol}_{time_frame}] Get {len(candles_data)} candles successfully")
@@ -157,6 +157,21 @@ def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict
     for pattern_name in count_pattern_name:
         overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
 
+    if "strong_bearish_divergence" in overlap_pattern_name:
+        if symbol not in allow_pattern_dict:
+            allow_pattern_dict[symbol] = {}
+
+        if time_frame not in allow_pattern_dict[symbol]:
+            allow_pattern_dict[symbol][time_frame] = {}
+        
+        if overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
+            allow_pattern_dict[symbol][time_frame][overlap_pattern_name] = {
+            "total_win_trade": 0,
+            "total_lose_trade": 0,
+            "total_trade": 0,
+            "win_rate": 0
+        }
+            
     if time_frame not in allow_pattern_dict[symbol] or overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
         overlap_pattern_name = None
     else:
@@ -272,7 +287,12 @@ def main():
         "AUD/USD",
         "USD/CAD",
         "GBP/USD",
+        "EUR/JPY",
+        "GBP/JPY",
+        "NZD/USD",
+        "EUR/CAD"
     ]
+    
     telegram_notification = TelegramNotification(False)
 
     processes = []

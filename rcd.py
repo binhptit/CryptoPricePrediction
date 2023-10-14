@@ -91,7 +91,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if not ((win_rate > 0.5) or ("ivergence" in pattern and win_rate > 0.3)):
+                    if not ((win_rate >= 0.6) or ("strong_bearish_divergence" in pattern)):
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
@@ -165,7 +165,23 @@ def analyze_and_send_noti(symbol, time_frame, data_collector, allow_pattern_dict
     for pattern_name in count_pattern_name:
         overlap_pattern_name += str(count_pattern_name[pattern_name]) + pattern_name + "_"
 
-    if time_frame not in allow_pattern_dict[symbol] or overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
+    if "strong_bearish_divergence" in overlap_pattern_name:
+        if symbol not in allow_pattern_dict:
+            allow_pattern_dict[symbol] = {}
+
+        if time_frame not in allow_pattern_dict[symbol]:
+            allow_pattern_dict[symbol][time_frame] = {}
+        
+        if overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
+            allow_pattern_dict[symbol][time_frame][overlap_pattern_name] = {
+            "total_win_trade": 0,
+            "total_lose_trade": 0,
+            "total_trade": 0,
+            "win_rate": 0
+        }
+
+    if time_frame not in allow_pattern_dict[symbol] \
+        or overlap_pattern_name not in allow_pattern_dict[symbol][time_frame]:
         overlap_pattern_name = None
     else:
         pattern_statistic = allow_pattern_dict[symbol][time_frame][overlap_pattern_name]                        
