@@ -13,7 +13,8 @@ from datetime import datetime
 import time
 import logging
 import multiprocessing
-logging.basicConfig(filename='logs/forex_chart_tracking.log', level=logging.INFO)
+import pytz
+logging.basicConfig(filename='logs/crypto_chart_tracking.log', level=logging.INFO)
 
 single_candle_patterns = [
             Hammer,
@@ -53,6 +54,13 @@ multiple_candle_patterns = [
         HiddenBullishDivergence
     ]
 
+crypto_time_frames = {
+    "1w": 88,
+    "1d": 356,
+    "4h": 356 * 6,
+    "1h": 600,
+}
+
 forex_time_frames = {
     # "30m": 200,
     "1h": 600,
@@ -83,7 +91,7 @@ def get_allow_pattern_dict(transaction_history_file = r'dataset/crypto_all_trans
                     if tf not in allow_pattern[symbol]:
                         allow_pattern[symbol][tf] = {}
 
-                    if not ((win_rate > 0.5) or ("ivergence" in pattern and win_rate > 0.35)):
+                    if not ((win_rate > 0.5) or ("ivergence" in pattern and win_rate > 0.3)):
                         continue
 
                     allow_pattern[symbol][tf][pattern.replace("/", "")] = {
@@ -204,27 +212,24 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
     last_day_week_process = -1
 
     while True:
-        # Get the current time
-        current_time = datetime.now()                
+        # Get the current time of timezone UTC+7
+        target_timezone = pytz.timezone('Asia/Bangkok')
+        current_time = datetime.now(target_timezone)
+
         minute_value = current_time.minute
         hour_value = current_time.hour
 
         # change hour value to Utc+7
-        hour_value = (hour_value + 7) % 24
+        # hour_value = (hour_value + 7) % 24
 
         # Reset minute and hour value for test
         # minute_value = 0
         # hour_value = 0
-
         is_analyze = False
-                
-        # if minute_value in [28, 29, 58, 59] and '30m' in time_frames:
-        #     # Call analyze and send noti 30m
-        #     is_analyze = True
-        #     analyze_and_send_noti(symbol, '30m', data_collector, allow_pattern_dict, telegram_notification)
-
+        
         if minute_value in [i for i in range(45, 51, 1)] and '1h' in time_frames and current_time.hour != last_hour_1h_process:
             # Call analyze and send noti 1h
+            logging.info(f"Start tracking chart for {symbol} with timeframes 1h")
             is_analyze = True
             analyze_and_send_noti(symbol, '1h', data_collector, allow_pattern_dict, telegram_notification)
             last_hour_1h_process = current_time.hour
@@ -257,7 +262,6 @@ def task(symbol, time_frames, data_collector, allow_pattern_dict, telegram_notif
 
 def main():
     binance_data_collector = BinanceCryptoDataCrawler()
-    forex_data_collector = ForexDataCollector()
 
     crypto_symbols = [
         'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 
@@ -266,29 +270,17 @@ def main():
     ]
     
     # Timeframe and limit
-
-    forex_symbols = [
-        "XAU/USD",
-        "XAG/USD",
-        "USD/JPY",
-        "USD/CHF",
-        "EUR/USD",
-        "AUD/USD",
-        "USD/CAD",
-        "GBP/USD",
-    ]
-    telegram_notification = TelegramNotification(False)
+    telegram_notification = TelegramNotification(True)
 
     processes = []
-    forex_allow_pattern_dict = get_allow_pattern_dict(transaction_history_file="dataset/forex_all_transaction_history.json",symbols=forex_symbols)
-    logging.info(f"[Forex] Load allow pattern dict for forex successfully")
+    allow_pattern_dict = get_allow_pattern_dict(symbols=crypto_symbols)
+    logging.info(f"[Crypto] Load allow attern dict for crypto successfully")
 
-    for symbol in forex_symbols:
-        process = multiprocessing.Process(target=task, args=(symbol, forex_time_frames, forex_data_collector, forex_allow_pattern_dict, telegram_notification))
+    for symbol in crypto_symbols:
+        process = multiprocessing.Process(target=task, args=(symbol, crypto_time_frames, binance_data_collector, allow_pattern_dict, telegram_notification))
         process.start()
         processes.append(process)
-
-    # Wait for all processes to complete
+    
     for process in processes:
         process.join()
 
